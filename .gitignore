@@ -1,0 +1,9 @@
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local working documents
+Commands.docx
+~$*.docx
