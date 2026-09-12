@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: robot-codesign
-Version: 0.12.0
+Version: 0.13.0
 Summary: Interactive robot structure, path, control and SVD co-design framework
 Requires-Python: >=3.10
 Requires-Dist: numpy>=1.24
