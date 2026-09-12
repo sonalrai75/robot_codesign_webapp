@@ -10,10 +10,10 @@ from robot_codesign.models import Planar2DOFRobot
 from robot_codesign.paths import PLANNERS
 from robot_codesign.analysis import metric_length, euclidean_joint_length, path_min_time_control
 from robot_codesign.analysis.svd_design import analyze_design_space, secondary_direction, secondary_metric, corrected_null_move
-from robot_codesign.analysis.target_search import TargetSpec, run_target_search
+from robot_codesign.analysis.target_search import TargetSpec, SecondarySpec, run_target_search
 
 ROOT=Path(__file__).resolve().parent
-app=FastAPI(title="Robot Co-Design Laboratory",version="0.12.0")
+app=FastAPI(title="Robot Co-Design Laboratory",version="0.13.0")
 app.mount("/static",StaticFiles(directory=ROOT/"static"),name="static")
 
 class RobotInput(BaseModel):
@@ -38,12 +38,22 @@ class GlobalTarget(BaseModel):
     value: float
     tolerance: float = 0.01
 
+class NullObjective(BaseModel):
+    metric: str
+    direction: str = "min"  # min | max
+    weight: float = 1.0
+
 class TargetSearchInput(AnalyzeInput):
     targets: list[GlobalTarget] = Field(default_factory=list)
     # None means continue until targets are met or the search stalls.  The
     # numerical implementation still has a hard safety cap.
     max_iterations: int | None = 10
     step_limit: float = 0.16
+    # v0.13: multiple weighted secondary metrics can be optimized together in
+    # the evolving null space of the selected primary target Jacobian.
+    secondary_objectives: list[NullObjective] = Field(default_factory=list)
+    null_step_fraction: float = 0.25
+    # v0.12 compatibility fields; ignored when secondary_objectives is supplied.
     secondary_objective: str = "none"
     secondary_weight: float = 0.25
 
@@ -212,10 +222,23 @@ def target_search(req:TargetSearchInput):
             specs.append(TargetSpec(t.metric,t.relation,float(t.value),float(t.tolerance)))
         if req.max_iterations is not None and not (1 <= req.max_iterations <= 100):
             raise ValueError("max_iterations must be 1..100, or null for unconstrained")
+        secondary_specs=[]
+        allowed_secondary={"mass","smoothness","peak_width","rms_width","maneuverability"}
+        for o in req.secondary_objectives:
+            if o.metric not in allowed_secondary:
+                raise ValueError(f"Unsupported secondary objective: {o.metric}")
+            if o.direction not in {"min","max"}:
+                raise ValueError(f"Unsupported secondary direction: {o.direction}")
+            if not (0 <= o.weight <= 100):
+                raise ValueError("Secondary objective weight must be between 0 and 100")
+            secondary_specs.append(SecondarySpec(o.metric,o.direction,float(o.weight)))
+        if not (0 <= req.null_step_fraction <= 1):
+            raise ValueError("null_step_fraction must be between 0 and 1")
         result=run_target_search(
             robot,specs,
             {"start_xy":req.start_xy,"end_xy":req.end_xy,"path_type":req.path_type,"branch":req.branch,"torque_limits":req.torque_limits,"timing_nodes":27},
             max_iterations=req.max_iterations,step_limit=float(req.step_limit),
+            secondary_objectives=secondary_specs,null_step_fraction=float(req.null_step_fraction),
             secondary_objective=req.secondary_objective,secondary_weight=float(req.secondary_weight),
             safety_cap=100,
         )
