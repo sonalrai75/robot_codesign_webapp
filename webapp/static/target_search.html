@@ -1,9 +1,104 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Global Target Search — Robot Co-Design Laboratory</title>
 <style>
 body{font-family:system-ui,Arial;margin:0;background:#f6f7f9;color:#17202a}.wrap{max-width:1450px;margin:auto;padding:18px}.grid{display:grid;grid-template-columns:390px 1fr;gap:16px}.card{background:#fff;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:14px}label{display:block;font-size:12px;margin-top:7px}input,select,button{box-sizing:border-box;padding:7px;margin-top:3px}input,select{width:100%}button{cursor:pointer;font-weight:650}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.targetrow{display:grid;grid-template-columns:28px 1.35fr 1fr 1fr .7fr;gap:6px;align-items:end;border-bottom:1px solid #eee;padding:6px 0}.secrow{display:grid;grid-template-columns:28px 1.35fr 1fr .75fr;gap:6px;align-items:end;border-bottom:1px solid #eee;padding:6px 0}.secrow input[type=checkbox]{width:auto;margin:0}.targetrow input[type=checkbox]{width:auto;margin:0}.muted{color:#667;font-size:12px}.warn{background:#fff5da;padding:9px;border-radius:6px;font-size:12px}.ok{background:#edf9f0}.bad{background:#fff2f1}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.metric{border:1px solid #ddd;border-radius:8px;padding:9px}.metric b{display:block;font-size:17px}.status{padding:10px;border-radius:7px;background:#f4f8fc;border:1px solid #c9d7e5}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #ddd;padding:7px;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:center}th:last-child,td:last-child{text-align:left}.viewbtn{width:auto;padding:4px 8px}.shape{width:100%;height:270px;background:#fafafa;border:1px solid #ddd;border-radius:8px}.changeplot{width:100%;height:330px;background:#fafafa;border:1px solid #ddd;border-radius:8px}.changelegend{display:flex;gap:16px;align-items:center;margin-top:6px;font-size:12px;color:#667}.swatch{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:4px;vertical-align:-2px}.detailgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pill{display:inline-block;border:1px solid #bbb;border-radius:13px;padding:2px 7px;margin:2px;font-size:11px}@media(max-width:950px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.detailgrid{grid-template-columns:1fr}}
-</style></head><body><div class="wrap">
+.guide{background:#eef6ff;border:1px solid #b8d5f0;border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.guide summary{cursor:pointer;font-weight:700;font-size:16px}
+.guide h3{margin-top:18px;margin-bottom:7px}
+.guide p,.guide li{line-height:1.5}
+.guide ol,.guide ul{padding-left:24px}
+.guide .example{background:white;border-left:4px solid #4d88b8;padding:10px 12px;margin:10px 0;border-radius:4px}
+.guide .term{font-weight:650}
+@media(max-width:950px){.guide{padding:12px}}
+</style><script>
+  window.va = window.va || function () {
+    (window.vaq = window.vaq || []).push(arguments);
+  };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</head><body><div class="wrap">
 <h1>Global Performance Target Search <span class="muted">v0.13 — active target steps + weighted evolving null-space optimization</span></h1>
 <p><a href="/">← Main co-design laboratory</a></p>
+<details class="guide">
+<summary>New here? Open the 5-minute user guide and tutorial</summary>
+
+<h3>What does this tool do?</h3>
+<p>This page helps you search for robot designs that meet one or more performance requirements. You define the robot and task, choose performance targets, and let the evolving-SVD optimizer change the design over multiple nonlinear iterations.</p>
+
+<h3>Four ideas to know first</h3>
+<p><span class="term">Design variables.</span> Physical quantities that describe the robot, including its link dimensions and distributed section sizes.</p>
+<p><span class="term">Performance metrics.</span> Quantities such as travel time, structural frequencies, mass, and inertia-related measures.</p>
+<p><span class="term">Primary targets.</span> Requirements that must be achieved or protected, such as travel time ≤ a limit or structural frequency ≥ a minimum.</p>
+<p><span class="term">Null-space objectives.</span> Secondary goals that can be improved using design freedom that has little first-order effect on the protected targets.</p>
+
+<h3>First tutorial — run a simple search</h3>
+<ol>
+<li>Leave the default robot and task values unchanged.</li>
+<li>Click <b>Analyze starting design</b>.</li>
+<li>Look at the Starting performance values. These are your baseline.</li>
+<li>Enable only <b>Travel time</b> as your first target.</li>
+<li>Keep the ≤ relationship and enter a target slightly below the current travel time.</li>
+<li>Leave the Null-space objectives unchecked for this first run.</li>
+<li>Keep Maximum iterations at 10 and leave the SVD step limit at its default.</li>
+<li>Click <b>Run evolving-SVD target + null search</b>.</li>
+<li>Use the Iteration history and <b>View</b> buttons to inspect the accepted designs.</li>
+</ol>
+
+<h3>How to read the main results</h3>
+<ul>
+<li><b>Travel ms</b> — predicted motion time.</li>
+<li><b>f1 / f2</b> — first and second flexible structural frequencies.</li>
+<li><b>Mass kg</b> — modeled structural mass.</li>
+<li><b>σmin</b> — the smallest active singular value of the local design-to-performance map.</li>
+<li><b>Cond.</b> — condition number; larger values indicate more uneven sensitivity across directions.</li>
+<li><b>Error</b> — remaining primary-target error.</li>
+<li><b>Active</b> — portion of the step used to satisfy primary targets.</li>
+<li><b>Null</b> — portion used for secondary objectives.</li>
+<li><b>Step</b> — total accepted design change for the iteration.</li>
+</ul>
+
+<h3>What is SVD?</h3>
+<p>SVD stands for <b>Singular Value Decomposition</b>. In this application it helps identify which combinations of design changes affect the selected performance metrics strongly, weakly, or almost not at all. Because that relationship changes as the robot changes, the SVD is recomputed throughout the search.</p>
+
+<h3>What is the null space?</h3>
+<p>Once important performance targets are protected, there can still be ways to change the robot without significantly disturbing those targets. Those locally redundant directions form the <b>null space</b>.</p>
+
+<div class="example">
+<b>Example:</b><br><br>
+Primary target: <b>Travel time ≤ 115 ms</b><br>
+Secondary objective: <b>Minimize mass</b><br><br>
+The optimizer first works toward the travel-time requirement, then uses available null-space freedom to reduce mass while preserving the target.
+</div>
+
+<h3>Second tutorial — add a secondary objective</h3>
+<ol>
+<li>Analyze the starting design.</li>
+<li>Enable Travel time as a primary target.</li>
+<li>Choose a modest improvement from the baseline.</li>
+<li>Under Null-space objectives, enable <b>Mass</b>.</li>
+<li>Leave it set to <b>minimize</b> with weight 1.</li>
+<li>Keep the null-space step fraction at 0.25 initially.</li>
+<li>Run the search and compare Travel time and Mass across iterations.</li>
+</ol>
+
+<h3>Useful controls</h3>
+<p><b>Tolerance</b> is relative and entered as a percentage. A value of 1 means approximately 1%.</p>
+<p><b>Maximum iterations</b> limits the search length. Leaving it blank allows the solver to continue until convergence/stall, subject to the safety cap.</p>
+<p><b>Maximum local SVD step</b> limits how far the optimizer moves per local iteration. Smaller values are more conservative.</p>
+<p><b>Null-space step fraction</b> controls how much of the local step budget may be used for secondary goals while the primary targets are still being pursued.</p>
+
+<h3>Recommended beginner workflow</h3>
+<ol>
+<li>Analyze the default design.</li>
+<li>Enable one target only.</li>
+<li>Ask for a modest improvement.</li>
+<li>Inspect the iteration history.</li>
+<li>Add one null-space objective.</li>
+<li>Then experiment with multiple targets and secondary objectives.</li>
+</ol>
+
+<h3>Important note</h3>
+<p>This is a design-exploration and research tool. Results depend on the mathematical and simulation models used and should be independently validated before physical construction, safety-critical use, or engineering certification.</p>
+</details>
 <div class="grid"><div>
 <div class="card"><h3>Robot and task</h3><div class="row"><label>L1 (m)<input id="l1" value="0.1419"></label><label>L2 (m)<input id="l2" value="0.4581"></label></div><div class="row"><label>Joint mass (kg)<input id="jm" value="0.09966"></label><label>Tip mass (kg)<input id="tm" value="0.000122"></label></div><div class="row"><label>Width 1 out (m)<input id="w1" value="0.01"></label><label>Width 2 out (m)<input id="w2" value="0.038"></label></div><div class="row"><label>Initial section 1<input id="t1" value="0.19"></label><label>Initial section 2<input id="t2" value="0.0052631579"></label></div><div class="row"><label>Start x<input id="sx" value="0.4"></label><label>Start y<input id="sy" value="0"></label></div><div class="row"><label>End x<input id="ex" value="0.4"></label><label>End y<input id="ey" value="0.2"></label></div><label>Path<select id="path"><option value="geodesic">Inertia-metric geodesic</option><option value="joint_line">Straight joint space</option><option value="cartesian_line">Straight Cartesian + IK</option><option value="optimized_cubic">Optimized cubic</option></select></label><div class="row"><label>Torque 1<input id="u1" value="40"></label><label>Torque 2<input id="u2" value="40"></label></div><button onclick="loadCurrent()" style="width:100%;margin-top:10px">Analyze starting design</button></div>
 <div class="card"><h3>Global performance targets</h3><div class="muted">Enable any combination. “≤” and “≥” are inequality targets; “=” seeks a target value. Tolerance is relative.</div><div id="targets"></div></div>
