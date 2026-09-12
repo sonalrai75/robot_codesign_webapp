@@ -1,0 +1,12 @@
+Milestone 15 — ADINA-like full planar frame diagnostic
+
+This milestone replaces the scalar bending-only model with a full planar
+frame formulation using three nodal DOFs [ux, uy, theta_z]. Both links are
+assembled into one global mass/stiffness system. At joint 2 the global x-y
+translations are shared; the two link rotations remain independent, matching
+the wording in Chapter 5. Base translations are fixed while base rotation is
+free.
+
+The goal is diagnostic, not an exact ADINA reproduction. ADINA's historical
+element library, constraint implementation, and any user-defined offsets or
+joint/transmission details are not available from the thesis alone.

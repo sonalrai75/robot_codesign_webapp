@@ -1,0 +1,33 @@
+Direct Figure 5-6 ordinate-as-thickness hypothesis
+------------------------------------------------
+Link 1 digitized thicknesses (m): [0.02173 0.02472 0.02783 0.0317  0.0357  0.04032 0.04434 0.04922 0.0531
+ 0.05609]
+Link 2 digitized thicknesses (m): [0.05132 0.04745 0.04235 0.0397  0.03558 0.02971 0.02484 0.0214  0.01885
+ 0.01585]
+
+Predicted link masses: 0.147409 kg, 1.537170 kg
+Predicted H(q1-q2=0):
+[[0.03420357 0.03966342]
+ [0.03966342 0.07435096]]
+Predicted inertia eigenvalues: [0.00982347 0.09873106]
+Thesis final inertia eigenvalues: [0.0066, 0.0281]
+
+Predicted first two flexible frequencies (Hz): [ 442.2346262  1205.31426278]
+Thesis final flexible frequencies (Hz): [72.0, 279.3]
+
+CONCLUSION: the plotted ordinate cannot safely be treated as literal
+rectangular-section thickness under the stated 1 cm / 3.8 cm widths.
+The thesis does not provide enough information to infer the missing
+plot-to-section mapping directly from Figure 5-6 alone.
+
+STDERR:
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 785, in warm_spreadsheet_runtime
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 720, in _warm_feature_flows
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 704, in _warm_collaboration_flows
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/generated/interface/models.py", line 32317, in hydrate_crdt_from_proto
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/remote.py", line 749, in __call__
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/client.py", line 150, in call
+artifact_tool.rpc.client.RemoteError: hydrateCrdtFromProto requires an empty collaborative document.

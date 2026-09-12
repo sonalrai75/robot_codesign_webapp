@@ -1,0 +1,302 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Robot Co-Design Laboratory</title>
+<style>
+body{font-family:system-ui,Arial;margin:0;background:#f6f7f9;color:#17202a}.wrap{max-width:1380px;margin:auto;padding:18px}.grid{display:grid;grid-template-columns:360px 1fr;gap:16px}.card{background:white;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:14px}label{display:block;font-size:12px;margin-top:7px}input,select,button{width:100%;box-sizing:border-box;padding:8px;margin-top:3px}button{cursor:pointer;font-weight:600}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.metric{border:1px solid #ddd;border-radius:8px;padding:10px}.metric b{display:block;font-size:17px}.plots{display:grid;grid-template-columns:1fr 1fr;gap:12px}.plot{width:100%;height:330px;background:#fafafa;border:1px solid #ddd;border-radius:8px}.shapeplot{height:270px}.controlplot{height:500px}.bar{height:14px;background:#555;margin:4px 0;border-radius:3px}.muted{color:#667;font-size:12px}.modegrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.pill{display:inline-block;border:1px solid #bbb;border-radius:14px;padding:3px 8px;margin:2px;font-size:12px}.warn{background:#fff5da;padding:8px;border-radius:6px;font-size:12px}.moveprogress{margin-top:8px;padding:9px;border:1px solid #c9d7e5;border-radius:7px;background:#f4f8fc;font-size:12px;line-height:1.55}.moveprogress .pending{color:#667}.moveprogress .done{color:#276749;font-weight:600}button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.58}.matrix{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;background:#f7f8fa;border:1px solid #e2e5e9;border-radius:6px;padding:8px}.inspectgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.inspectbox{border:1px solid #ddd;border-radius:8px;padding:10px}.inspectbox b{display:block;margin-bottom:5px}.changeplot{width:100%;height:360px;background:#fafafa;border:1px solid #ddd;border-radius:8px}.changelegend{display:flex;gap:16px;align-items:center;margin-top:6px;font-size:12px;color:#667}.swatch{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:4px;vertical-align:-2px}@media(max-width:800px){.inspectgrid{grid-template-columns:1fr}}h3{margin-top:2px}@media(max-width:950px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.plots{grid-template-columns:1fr}}
+</style></head><body><div class="wrap"><h1>Robot Co-Design Laboratory <span class="muted">v0.12 — distributed inertia + evolving-SVD search + metric change charts</span></h1><p><a href="/target-search" style="font-weight:700">Open Global Target Search →</a> &nbsp; Specify performance goals and let the evolving SVD algorithm take multiple nonlinear steps automatically.</p><div class="grid"><div>
+<div class="card"><h3>2-DOF planar robot</h3><div class="row"><label>L1 (m)<input id="l1" value="0.1419"></label><label>L2 (m)<input id="l2" value="0.4581"></label></div><div class="row"><label>Joint mass (kg)<input id="jm" value="0.09966"></label><label>Tip mass (kg)<input id="tm" value="0.000122"></label></div><div class="row"><label>Out-of-plane width 1 (m)<input id="w1" value="0.01"></label><label>Out-of-plane width 2 (m)<input id="w2" value="0.038"></label></div><div class="row"><label>Initial in-plane width 1 (m)<input id="t1" value="0.19"></label><label>Initial in-plane width 2 (m)<input id="t2" value="0.0052631579"></label></div><button id="uniformBtn" onclick="uniformize()">Reset to uniform sections</button></div>
+<div class="card"><h3>Task and path</h3><div class="row"><label>Start x<input id="sx" value="0.4"></label><label>Start y<input id="sy" value="0"></label></div><div class="row"><label>End x<input id="ex" value="0.4"></label><label>End y<input id="ey" value="0.2"></label></div><label>Path<select id="path"><option value="geodesic">Inertia-metric geodesic</option><option value="joint_line">Straight joint space</option><option value="cartesian_line">Straight Cartesian + IK</option><option value="optimized_cubic">Optimized cubic (experimental)</option></select></label><div class="row"><label>Torque 1 (N m)<input id="u1" value="40"></label><label>Torque 2 (N m)<input id="u2" value="40"></label></div><button id="analyzeBtn" onclick="analyze()">Analyze path</button><button id="svdBtn" onclick="runSVD()">Compute SVD / hyperspace</button><div id="status" class="muted"></div></div>
+<div class="card"><h3>Design hyperspace move</h3><label>Move type<select id="space" onchange="spaceChanged()"><option value="null">Redundant/null direction — preserve primary metrics</option><option value="active">Active SVD direction — V1…V4</option><option value="active_combo">Active SVD combination — weighted V1…V4</option><option value="active_balanced">Balanced active direction — impact both links</option><option value="secondary">Secondary objective in redundant space</option></select></label><div id="directionBox"><label>Direction<select id="direction"></select></label></div><div id="weightsBox" style="display:none"><div class="row"><label>V1 weight<input id="vw1" value="1"></label><label>V2 weight<input id="vw2" value="0"></label></div><div class="row"><label>V3 weight<input id="vw3" value="0"></label><label>V4 weight<input id="vw4" value="0"></label></div><div class="muted">Weights are normalized automatically before the move.</div></div><div id="objectiveBox" style="display:none"><label>Secondary objective<select id="objective"><option value="mass">Minimize mass</option><option value="smoothness">Smooth section profile</option><option value="peak_width">Reduce peak width</option><option value="rms_width">Reduce RMS width</option><option value="maneuverability">Increase σmin / redesign maneuverability</option></select></label></div><label>Step in log-design space: <b id="ampText">+0.080</b><input id="amp" type="range" min="-0.30" max="0.30" step="0.01" value="0.08" oninput="$('ampText').textContent=(+this.value>=0?'+':'')+(+this.value).toFixed(3)"></label><label><input id="correct" type="checkbox" checked style="width:auto"> Correct nonlinear drift back to the primary-performance manifold</label><button id="applyMoveBtn" onclick="applyMove()">Apply design move</button><button id="undoMoveBtn" onclick="undoMove()">Undo last design move</button><div id="moveProgress" class="moveprogress" style="display:none"></div><div class="warn">Null-space directions are local. A finite step can leave the constant-performance manifold, so the correction option recomputes the nonlinear model and projects back toward the four primary targets.</div></div>
+</div><div>
+<div class="plots"><div class="card"><h3>Robot and task-space path</h3><svg class="plot" id="plot" viewBox="-1 -1 2 2"></svg><div class="muted">Hover anywhere on the path to see coordinates. <b>Click a point to freeze that configuration</b> and inspect inertia, torque demand, velocity/acceleration, and structural state. Green = start, red = end.</div></div><div class="card"><h3>20-element section / mass distribution</h3><svg class="plot shapeplot" id="shape" viewBox="0 0 1000 360"></svg><div class="muted">Each link profile is visually normalized independently so thin Link 2 sections remain visible. True width ranges and masses are printed on the plot. Profile thickness = in-plane section width; fill opacity tracks element mass. Joint and tip lumped masses are shown separately.</div></div></div>
+<div class="card"><h3>Selected path point</h3><div id="pointInspector" class="muted">Click a point on the path to freeze and inspect that configuration.</div></div>
+<div class="card"><h3>Joint-space time-optimal control</h3><svg class="plot controlplot" id="controlPlot" viewBox="0 0 1000 500"></svg><div class="muted" id="controlNote">For the inertia-metric geodesic, the Chapter 5 reduction is used directly: the geodesic is parameterized by Riemannian arc length, the maximum admissible acceleration/deceleration is computed from the individual joint torque limits, and the active motor sits on its ± torque limit. The lower panel shows path speed. For non-geodesic paths, the app retains the generic fixed-path numerical solver and labels it separately.</div></div><div class="card"><h3>Performance</h3><div id="metrics" class="metrics"></div></div><div class="card"><h3>Performance change from starting point</h3><svg id="metricChangePlot" class="changeplot" viewBox="0 0 1000 420"></svg><div class="changelegend"><span><span class="swatch" style="background:#2f6f9f"></span>increase from start</span><span><span class="swatch" style="background:#c26b32"></span>decrease from start</span><span>Signed % change; whether increase or decrease is desirable depends on the metric.</span></div></div>
+<div class="card"><h3>SVD / redundant design space</h3><div id="svd">Compute SVD to expose active and redundant directions.</div><div id="modePreview"></div></div>
+</div></div></div>
+<script>
+const $=id=>document.getElementById(id), val=id=>parseFloat($(id).value); let sections={t1:Array(10).fill(.19),t2:Array(10).fill(.0052631579)}, history=[]; let lastSVD=null, lastAnalysis=null, pinnedIndex=null; let shapeScaleRef={link1:null,link2:null}; let performanceBaseline=null;
+function request(){return {robot:{l1:val('l1'),l2:val('l2'),rho:2700,E:2.7e10,joint_mass:val('jm'),tip_mass:val('tm'),width1_out:val('w1'),width2_out:val('w2'),t1:sections.t1,t2:sections.t2},start_xy:[val('sx'),val('sy')],end_xy:[val('ex'),val('ey')],path_type:$('path').value,branch:1,torque_limits:[val('u1'),val('u2')]};}
+const clientId=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():`client-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+let designRevision=0, moveBusy=false, moveRequestSeq=0;
+let savedDisabledStates=[];
+function setMoveBusy(on){
+  moveBusy=on;
+  const controls=[...document.querySelectorAll('button,input,select')];
+  if(on){
+    savedDisabledStates=controls.map(el=>[el,el.disabled]);
+    controls.forEach(el=>el.disabled=true);
+    $('applyMoveBtn').textContent='Applying move…';
+  }else{
+    savedDisabledStates.forEach(([el,was])=>{if(document.body.contains(el))el.disabled=was;});
+    savedDisabledStates=[];
+    $('applyMoveBtn').textContent='Apply design move';
+    // Reapply move-type-specific checkbox logic after restoring controls.
+    spaceChanged();
+  }
+}
+function showMoveProgress(stage='working',message=''){
+  const box=$('moveProgress'); box.style.display='block';
+  if(stage==='working') box.innerHTML=`<b>Applying design move transaction…</b><br><span class="pending">○ structure update<br>○ geodesic / path recomputation<br>○ bang-bang / torque control<br>○ performance metrics<br>○ SVD / hyperspace</span>${message?`<br>${message}`:''}`;
+  else if(stage==='done') box.innerHTML=`<b class="done">✓ Move committed as design revision ${designRevision}</b><br><span class="done">✓ structure update &nbsp; ✓ path/control &nbsp; ✓ performance &nbsp; ✓ SVD</span>`;
+  else box.innerHTML=`<b>Move not committed.</b><br>${message}`;
+}
+async function post(url,payload=request()){$('status').textContent='Computing…';let r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});let j=await r.json();$('status').textContent=r.ok?'Ready':(j.detail||'Error');if(!r.ok)throw new Error(j.detail);return j;}
+function drawRobot(d){
+  let svg=$('plot'),xy=d.path.xy,q=d.path.q,L1=val('l1');
+  let all=xy.flat();
+  let s=1.25/Math.max(.65,...all.map(Math.abs));
+  let pts=xy.map(p=>`${p[0]*s},${-p[1]*s}`).join(' ');
+  let k=Math.floor(q.length/2),qq=q[k];
+  let p1=[L1*Math.cos(qq[0])*s,-L1*Math.sin(qq[0])*s],p2=[xy[k][0]*s,-xy[k][1]*s];
+  const start=xy[0], end=xy[xy.length-1];
+  svg.innerHTML=`
+    <polyline points="${pts}" fill="none" stroke="#547aa5" stroke-width=".014"/>
+    <polyline id="pathHit" points="${pts}" fill="none" stroke="transparent" stroke-width=".10" style="cursor:crosshair;pointer-events:stroke"/>
+    <circle cx="${start[0]*s}" cy="${-start[1]*s}" r=".027" fill="#2f855a"/>
+    <circle cx="${end[0]*s}" cy="${-end[1]*s}" r=".027" fill="#c53030"/>
+    <line x1="0" y1="0" x2="${p1[0]}" y2="${p1[1]}" stroke="#222" stroke-width=".035"/>
+    <line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="#222" stroke-width=".035"/>
+    <circle cx="0" cy="0" r=".035"/>
+    <circle cx="${p1[0]}" cy="${p1[1]}" r=".03"/>
+    <circle cx="${p2[0]}" cy="${p2[1]}" r=".03"/>
+    <g id="pathPin" visibility="hidden" pointer-events="none">
+      <circle id="pathPinDot" r=".034" fill="#805ad5" stroke="white" stroke-width=".012"/>
+      <circle id="pathPinRing" r=".050" fill="none" stroke="#805ad5" stroke-width=".010"/>
+    </g>
+    <g id="pathTip" visibility="hidden" pointer-events="none">
+      <circle id="pathTipDot" r=".025" fill="#111" stroke="white" stroke-width=".008"/>
+      <rect id="pathTipBox" x="0" y="0" width=".72" height=".23" rx=".03" fill="rgba(20,28,38,.92)"/>
+      <text id="pathTipText1" x="0" y="0" font-size=".075" fill="white"></text>
+      <text id="pathTipText2" x="0" y="0" font-size=".062" fill="#d7e3ef"></text>
+    </g>`;
+
+  const hit=$('pathHit'), tip=$('pathTip'), dot=$('pathTipDot'), box=$('pathTipBox'), t1=$('pathTipText1'), t2=$('pathTipText2'), pin=$('pathPin'), pinDot=$('pathPinDot'), pinRing=$('pathPinRing');
+  function svgPoint(evt){let pt=svg.createSVGPoint();pt.x=evt.clientX;pt.y=evt.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
+  function nearestIndex(p){let best=0,bd=Infinity;for(let i=0;i<xy.length;i++){let dx=xy[i][0]*s-p.x,dy=-xy[i][1]*s-p.y,dd=dx*dx+dy*dy;if(dd<bd){bd=dd;best=i;}}return best;}
+  hit.addEventListener('mousemove',evt=>{
+    const p=svgPoint(evt), i=nearestIndex(p), X=xy[i][0], Y=xy[i][1], sx=X*s, sy=-Y*s;
+    dot.setAttribute('cx',sx); dot.setAttribute('cy',sy);
+    let bx=sx+.045, by=sy-.20;
+    if(bx+.72>1)bx=sx-.765;
+    if(by<-.98)by=sy+.06;
+    box.setAttribute('x',bx);box.setAttribute('y',by);
+    t1.setAttribute('x',bx+.035);t1.setAttribute('y',by+.09);
+    t2.setAttribute('x',bx+.035);t2.setAttribute('y',by+.175);
+    t1.textContent=`x = ${X.toFixed(4)} m,  y = ${Y.toFixed(4)} m`;
+    if(q && q[i])t2.textContent=`q1 = ${(q[i][0]*180/Math.PI).toFixed(2)}°,  q2 = ${(q[i][1]*180/Math.PI).toFixed(2)}°`;
+    else t2.textContent=`path point ${i+1} / ${xy.length}`;
+    tip.setAttribute('visibility','visible');
+  });
+  hit.addEventListener('mouseleave',()=>tip.setAttribute('visibility','hidden'));
+  hit.addEventListener('click',evt=>{
+    const p=svgPoint(evt), i=nearestIndex(p); pinnedIndex=i;
+    const sx=xy[i][0]*s, sy=-xy[i][1]*s;
+    pinDot.setAttribute('cx',sx);pinDot.setAttribute('cy',sy);
+    pinRing.setAttribute('cx',sx);pinRing.setAttribute('cy',sy);
+    pin.setAttribute('visibility','visible');
+    showPointInspector(d,i);
+  });
+  if(pinnedIndex!==null && pinnedIndex<xy.length){
+    const sx=xy[pinnedIndex][0]*s, sy=-xy[pinnedIndex][1]*s;
+    pinDot.setAttribute('cx',sx);pinDot.setAttribute('cy',sy);pinRing.setAttribute('cx',sx);pinRing.setAttribute('cy',sy);pin.setAttribute('visibility','visible');
+  }
+}
+function nearestArrayIndex(a,x){let k=0,b=Infinity;for(let i=0;i<a.length;i++){let d=Math.abs(a[i]-x);if(d<b){b=d;k=i}}return k;}
+function showPointInspector(d,i){
+  if(!d||!d.path)return;
+  const P=d.path, u=P.u[i], xy=P.xy[i], q=P.q[i], H=P.inertia?P.inertia[i]:null, eig=P.inertia_eigs?P.inertia_eigs[i]:null;
+  const T=P.timing||{}, km=T.u_mid?nearestArrayIndex(T.u_mid,u):0, kn=T.u_nodes?nearestArrayIndex(T.u_nodes,u):0;
+  const tau=T.torque_mid?T.torque_mid[km]:[NaN,NaN], acc=T.path_accel_mid?T.path_accel_mid[km]:NaN;
+  let qdot=[NaN,NaN], qddot=[NaN,NaN], speedLabel='du/dt', accelLabel='d²u/dt²', speedVal=NaN;
+  if(T.solver_kind==='geodesic_bang_bang' && T.path_speed_nodes){
+    speedVal=T.path_speed_nodes[kn]; speedLabel='ds/dt'; accelLabel='d²s/dt²';
+    const c=(T.metric_speed_du&&T.metric_speed_du[kn])?T.metric_speed_du[kn]:NaN;
+    const udot=Number.isFinite(c)&&c>0?speedVal/c:NaN;
+    if(P.q_u&&P.q_uu&&Number.isFinite(udot)){
+      for(let j=0;j<q.length;j++) qdot[j]=P.q_u[i][j]*udot;
+      // qddot from the nearest neighboring velocity samples is more robust here;
+      // leave it unreported rather than mixing s- and u-accelerations.
+    }
+  } else {
+    const xdot2=T.speed_sq_nodes?T.speed_sq_nodes[kn]:NaN, udot=Math.sqrt(Math.max(0,xdot2||0)); speedVal=udot;
+    if(P.q_u&&P.q_uu){for(let j=0;j<q.length;j++){qdot[j]=P.q_u[i][j]*udot;qddot[j]=P.q_uu[i][j]*(xdot2||0)+P.q_u[i][j]*(acc||0);}}
+  }
+  const des=d.design||{}, m1=(des.element_mass1||[]).reduce((a,b)=>a+b,0), m2=(des.element_mass2||[]).reduce((a,b)=>a+b,0);
+  const r1=des.t1&&des.t1.length?[Math.min(...des.t1),Math.max(...des.t1)]:[NaN,NaN], r2=des.t2&&des.t2.length?[Math.min(...des.t2),Math.max(...des.t2)]:[NaN,NaN];
+  const lim=[val('u1'),val('u2')], tr=[Math.abs(tau[0])/lim[0],Math.abs(tau[1])/lim[1]];
+  const active=T.active_joint_mid?T.active_joint_mid[km]:null, sign=T.active_sign_mid?T.active_sign_mid[km]:null;
+  const f=x=>Number.isFinite(x)?x.toFixed(5):'—', deg=x=>Number.isFinite(x)?(x*180/Math.PI).toFixed(2):'—';
+  $('pointInspector').innerHTML=`
+    <div><b>Frozen path point ${i+1} / ${P.u.length}</b> &nbsp; <span class="pill">u = ${u.toFixed(4)}</span> <span class="pill">x = ${f(xy[0])} m</span> <span class="pill">y = ${f(xy[1])} m</span></div>
+    <div class="inspectgrid" style="margin-top:9px">
+      <div class="inspectbox"><b>Configuration and motion</b>
+        q1 = ${deg(q[0])}°<br>q2 = ${deg(q[1])}°<br>
+        ${speedLabel} ≈ ${f(speedVal)}<br>${accelLabel} ≈ ${f(acc)}<br>
+        q̇ ≈ [${f(qdot[0])}, ${f(qdot[1])}] rad/s<br>
+        ${T.solver_kind==='geodesic_bang_bang'?'<span class="muted">Geodesic control is parameterized by Riemannian arc length s.</span>':`q̈ ≈ [${f(qddot[0])}, ${f(qddot[1])}] rad/s²`}
+      </div>
+      <div class="inspectbox"><b>Inertia at this configuration</b>
+        ${H?`<div class="matrix">[ ${f(H[0][0])}  ${f(H[0][1])} ]
+[ ${f(H[1][0])}  ${f(H[1][1])} ]</div>`:'—'}
+        ${eig?`eigenvalues: ${f(eig[0])}, ${f(eig[1])}`:''}
+      </div>
+      <div class="inspectbox"><b>Joint-space torque control</b>
+        τ1 ≈ ${f(tau[0])} N·m &nbsp; (${Number.isFinite(tr[0])?(100*tr[0]).toFixed(1):'—'}% limit)<br>
+        τ2 ≈ ${f(tau[1])} N·m &nbsp; (${Number.isFinite(tr[1])?(100*tr[1]).toFixed(1):'—'}% limit)<br>
+        ${active?`<b style="margin-top:5px">Active constraint: Motor ${active} ${sign>0?'+':'−'} limit</b>`:''}
+        <span class="muted">${T.solver_kind==='geodesic_bang_bang'?'Chapter 5 geodesic bang-bang reduction; one joint torque constraint is active on each acceleration/deceleration arc.':'Generic fixed-path numerical torque solution.'}</span>
+      </div>
+    </div>
+    <div class="inspectgrid" style="margin-top:8px">
+      <div class="inspectbox"><b>Link 1 structural state</b>width range ${f(r1[0])}–${f(r1[1])} m<br>distributed mass ${f(m1)} kg</div>
+      <div class="inspectbox"><b>Link 2 structural state</b>width range ${f(r2[0])}–${f(r2[1])} m<br>distributed mass ${f(m2)} kg</div>
+      <div class="inspectbox"><b>Flexible performance</b>f1 = ${d.performance.f1_Hz.toFixed(3)} Hz<br>f2 = ${d.performance.f2_Hz.toFixed(3)} Hz<br><span class="muted">The structural design is fixed along a path; configuration changes the rigid-body inertia and control demand.</span></div>
+    </div>`;
+}
+function drawControl(d){
+  const svg=$('controlPlot'), T=d&&d.path?d.path.timing:null;
+  if(!T||!T.torque_mid){svg.innerHTML='<text x="35" y="45" font-size="18">Analyze a path to show the control profile.</text>';return;}
+  const tau=T.torque_mid, lim=[val('u1'),val('u2')];
+  let tm=[], tn=[], total=T.time_s||0;
+  if(T.time_mid&&T.time_nodes){tm=T.time_mid;tn=T.time_nodes;total=T.time_nodes[T.time_nodes.length-1];}
+  else {
+    const u=T.u_nodes, x=T.speed_sq_nodes, um=T.u_mid; tn=[0];
+    for(let i=0;i<u.length-1;i++){let du=u[i+1]-u[i],v0=Math.sqrt(Math.max(0,x[i])),v1=Math.sqrt(Math.max(0,x[i+1]));tn.push(tn[tn.length-1]+2*du/(v0+v1+1e-15));}
+    tm=um.map((_,i)=>(tn[i]+tn[i+1])/2); total=tn[tn.length-1];
+  }
+  const L=76,R=970,Tp=42,B1=275,T2=330,B2=455,W=R-L,H1=B1-Tp,H2=B2-T2;
+  const ymax=Math.max(...lim,...tau.flat().map(v=>Math.abs(v)),1)*1.08;
+  const X=t=>L+(R-L)*t/Math.max(total,1e-12), Y=y=>(Tp+B1)/2-y*(H1/2)/ymax;
+  let h=`<line x1="${L}" y1="${Y(0)}" x2="${R}" y2="${Y(0)}" stroke="#777"/><line x1="${L}" y1="${Tp}" x2="${L}" y2="${B1}" stroke="#777"/>`;
+  // Separate actuator limits; identical limits overlap visually by design.
+  for(const z of [lim[0],-lim[0]]) h+=`<line x1="${L}" y1="${Y(z)}" x2="${R}" y2="${Y(z)}" stroke="#777" stroke-dasharray="8 6" opacity=".7"/>`;
+  function poly(j,stroke){return `<polyline points="${tm.map((t,i)=>`${X(t)},${Y(tau[i][j])}`).join(' ')}" fill="none" stroke="${stroke}" stroke-width="3"/>`;}
+  h+=poly(0,'#2b6cb0')+poly(1,'#c53030');
+  const geo=T.solver_kind==='geodesic_bang_bang';
+  h+=`<text x="${L}" y="22" font-size="15" font-weight="650">${geo?'Geodesic time-optimal joint torques':'Generic fixed-path numerical joint torques'}</text><text x="${L+360}" y="22" font-size="13" fill="#2b6cb0">τ1</text><text x="${L+405}" y="22" font-size="13" fill="#c53030">τ2</text>`;
+  if(geo && T.switch_time_s!==undefined){const xs=X(T.switch_time_s);h+=`<line x1="${xs}" y1="${Tp}" x2="${xs}" y2="${B2}" stroke="#805ad5" stroke-dasharray="5 4"/><text x="${xs+6}" y="${Tp+16}" font-size="11" fill="#805ad5">accel → brake switch</text>`;}
+  // Mark which actuator is active. These dots should lie on ±limit for the geodesic solver.
+  if(geo && T.active_joint_mid){for(let i=0;i<tm.length;i++){let j=T.active_joint_mid[i]-1;h+=`<circle cx="${X(tm[i])}" cy="${Y(tau[i][j])}" r="2.6" fill="${j===0?'#2b6cb0':'#c53030'}"/>`;}}
+  h+=`<text x="18" y="${(Tp+B1)/2}" transform="rotate(-90 18 ${(Tp+B1)/2})" text-anchor="middle" font-size="13">joint torque (N·m)</text>`;
+  // Lower speed panel.
+  let speed=T.path_speed_nodes||null;
+  if(speed&&tn.length===speed.length){const vmax=Math.max(...speed,1e-12), Ys=v=>B2-(v/vmax)*H2;h+=`<line x1="${L}" y1="${B2}" x2="${R}" y2="${B2}" stroke="#777"/><line x1="${L}" y1="${T2}" x2="${L}" y2="${B2}" stroke="#777"/><polyline points="${tn.map((t,i)=>`${X(t)},${Ys(speed[i])}`).join(' ')}" fill="none" stroke="#2f855a" stroke-width="3"/><text x="${L}" y="${T2-8}" font-size="13" font-weight="600" fill="#2f855a">Riemannian path speed ds/dt</text>`;}
+  h+=`<text x="${(L+R)/2}" y="485" text-anchor="middle" font-size="13">time (s) — total ${total.toFixed(5)} s</text>`;
+  for(let k=0;k<=4;k++){let t=total*k/4;h+=`<text x="${X(t)}" y="475" text-anchor="middle" font-size="11">${t.toFixed(3)}</text>`;}
+  h+=`<text x="${R-210}" y="${Tp+18}" font-size="11" fill="#666">dashed = ± joint torque limit</text>`;
+  if(geo)h+=`<text x="${L}" y="${B1+30}" font-size="11" fill="#556">Colored dots identify the active saturated motor. The other motor generally remains inside its limit.</text>`;
+  svg.innerHTML=h;
+}
+function drawShape(design,title='Current design'){
+  if(!design)return;
+  const svg=$('shape'), t1=design.t1, t2=design.t2;
+  const m1=design.element_mass1||[], m2=design.element_mass2||[];
+  let html=`<text x="24" y="28" font-size="19" font-weight="650">${title}</text>`;
+  function fmt(x){if(x>=.1)return x.toFixed(4); if(x>=.01)return x.toFixed(5); return x.toFixed(6)}
+  function profile(a,m,y,label,x0=105,W=800){
+    const n=a.length, ew=W/n, amin=Math.min(...a), amax=Math.max(...a), mass=m.reduce((s,x)=>s+x,0);
+    // Independent visual normalization by link. Preserve relative variation within each link,
+    // but give even a uniform/thin link a readable minimum thickness.
+    // Keep each link independently readable, but freeze its visual reference
+    // at the first design.  Re-normalizing on every redraw would hide uniform
+    // thickness changes (especially on Link 2).
+    const key=(label==='Link 1')?'link1':'link2';
+    if(shapeScaleRef[key]===null) shapeScaleRef[key]=Math.max(amax,1e-12);
+    const ref=Math.max(shapeScaleRef[key],1e-12), minHalf=8, spanHalf=30;
+    const half=a.map(v=>Math.max(3,Math.min(48,minHalf+spanHalf*v/ref)));
+    const top=[], bot=[];
+    for(let i=0;i<n;i++){
+      const xl=x0+i*ew, xr=x0+(i+1)*ew, h=half[i];
+      top.push(`${xl},${y-h}`,`${xr},${y-h}`);
+      bot.unshift(`${xr},${y+h}`,`${xl},${y+h}`);
+    }
+    html+=`<text x="25" y="${y-48}" font-size="15" font-weight="600">${label}</text>`;
+    html+=`<text x="150" y="${y-48}" font-size="12" fill="#556">actual width ${fmt(amin)}–${fmt(amax)} m · distributed mass ${mass.toFixed(4)} kg · fixed per-link visual reference</text>`;
+    html+=`<polygon points="${top.concat(bot).join(' ')}" fill="rgba(48,91,132,.35)" stroke="#234" stroke-width="1.5"/>`;
+    html+=`<line x1="${x0}" y1="${y}" x2="${x0+W}" y2="${y}" stroke="#17202a" stroke-width="1"/>`;
+    const mm=Math.max(...m,1e-12);
+    for(let i=0;i<n;i++){
+      const x=x0+i*ew, h=half[i], op=.18+.58*((m[i]||0)/mm);
+      html+=`<rect x="${x+1}" y="${y-h}" width="${ew-2}" height="${2*h}" fill="rgba(35,70,110,${op})" stroke="rgba(20,45,70,.45)" stroke-width=".7"/>`;
+      html+=`<text x="${x+ew/2}" y="${y+50}" font-size="10" text-anchor="middle">${i+1}</text>`;
+    }
+  }
+  profile(t1,m1,112,'Link 1');
+  profile(t2,m2,265,'Link 2');
+  const jr=Math.min(22,7+45*Math.sqrt(design.joint_mass||0));
+  const tr=Math.min(18,5+70*Math.sqrt(design.tip_mass||0));
+  html+=`<circle cx="930" cy="112" r="${jr}" fill="#555"/><text x="930" y="116" text-anchor="middle" fill="white" font-size="10">M1</text>`;
+  html+=`<text x="930" y="145" text-anchor="middle" font-size="10" fill="#556">${(design.joint_mass||0).toFixed(4)} kg</text>`;
+  html+=`<circle cx="930" cy="265" r="${tr}" fill="#777"/><text x="930" y="269" text-anchor="middle" fill="white" font-size="9">M2</text>`;
+  html+=`<text x="930" y="295" text-anchor="middle" font-size="10" fill="#556">${(design.tip_mass||0).toPrecision(3)} kg</text>`;
+  svg.innerHTML=html;
+}
+
+const changeMetricDefs=[
+  ['travel_time_s','Travel time',1000,'ms'],['H_min','H min',1,''],['H_max','H max',1,''],
+  ['f1_Hz','f1',1,'Hz'],['f2_Hz','f2',1,'Hz'],['mass_kg','Mass',1,'kg'],
+  ['smoothness','Smoothness',1,''],['peak_width','Peak width',1,'m'],['rms_width','RMS width',1,'m'],
+  ['riemannian_length','Riemannian length',1,'']
+];
+function drawMetricChange(current){
+  const svg=$('metricChangePlot'); if(!svg||!current)return;
+  if(!performanceBaseline) performanceBaseline=JSON.parse(JSON.stringify(current));
+  const rows=changeMetricDefs.filter(d=>Number.isFinite(+current[d[0]])&&Number.isFinite(+performanceBaseline[d[0]])&&Math.abs(+performanceBaseline[d[0]])>1e-14).map(d=>{
+    const b=+performanceBaseline[d[0]],c=+current[d[0]],pct=100*(c-b)/Math.abs(b);return {label:d[1],pct,base:b*d[2],cur:c*d[2],unit:d[3]};
+  });
+  if(!rows.length){svg.innerHTML='<text x="30" y="45" font-size="16">No comparable metrics available.</text>';return;}
+  const W=1000,H=420, left=190,right=75,top=28,bottom=26,plotW=W-left-right,rowH=(H-top-bottom)/rows.length;
+  const maxAbs=Math.max(1,...rows.map(r=>Math.abs(r.pct)))*1.12, x0=left+plotW/2, half=plotW/2;
+  let h=`<line x1="${x0}" y1="${top-8}" x2="${x0}" y2="${H-bottom+3}" stroke="#59636e" stroke-width="1.2"/><text x="${x0}" y="16" text-anchor="middle" font-size="11" fill="#667">0%</text>`;
+  rows.forEach((r,i)=>{
+    const y=top+i*rowH+rowH*.18, bh=Math.max(12,rowH*.62), bw=Math.min(half,Math.abs(r.pct)/maxAbs*half), positive=r.pct>=0, x=positive?x0:x0-bw, fill=positive?'#2f6f9f':'#c26b32';
+    const tx=positive?Math.min(W-6,x+bw+7):Math.max(left+2,x-7), anchor=positive?'start':'end';
+    h+=`<text x="${left-12}" y="${y+bh*.70}" text-anchor="end" font-size="13" fill="#223">${r.label}</text><rect x="${x}" y="${y}" width="${Math.max(.5,bw)}" height="${bh}" rx="3" fill="${fill}"/><text x="${tx}" y="${y+bh*.70}" text-anchor="${anchor}" font-size="12" font-weight="650" fill="#223">${r.pct>=0?'+':''}${r.pct.toFixed(2)}%</text>`;
+  });
+  svg.innerHTML=h;
+}
+function metric(name,v,unit=''){return `<div class="metric"><span>${name}</span><b>${Number(v).toPrecision(5)} ${unit}</b></div>`}
+function showMetrics(p){$('metrics').innerHTML=metric('H min',p.H_min)+metric('H max',p.H_max)+metric('f1',p.f1_Hz,'Hz')+metric('f2',p.f2_Hz,'Hz')+metric('Mass',p.mass_kg,'kg')+(p.travel_time_s!==undefined?metric('Travel time',1000*p.travel_time_s,'ms'):'')+metric('Smoothness',p.smoothness)+metric('Peak width',p.peak_width,'m')+metric('RMS width',p.rms_width,'m')+(p.riemannian_length!==undefined?metric('Riemannian length',p.riemannian_length):'');drawMetricChange(p);}
+async function analyze(){let d=await post('/api/v1/analyze');lastAnalysis=d;pinnedIndex=null;$('pointInspector').innerHTML='<span class="muted">Click a point on the path to freeze and inspect that configuration.</span>';drawRobot(d);drawControl(d);drawShape(d.design);showMetrics(d.performance);}
+async function runSVD(){let d=await post('/api/v1/svd');lastSVD=d;let mx=Math.max(...d.singular_values);$('svd').innerHTML=`<p><b>${d.n_design_variables}</b> design variables; active rank <b>${d.rank}</b>; redundant/null dimension <b>${d.null_dimension}</b>; condition <b>${d.condition.toFixed(3)}</b>.</p><p><span class="pill">Active: V1…V${d.rank}</span><span class="pill">Null: N1…N${d.null_dimension}</span></p>`+d.singular_values.map((x,i)=>`σ${i+1} = ${x.toFixed(5)}<div class="bar" style="width:${Math.max(2,100*x/mx)}%"></div>`).join('')+`<p class="muted">Active V-directions change primary performance most strongly. Null N-directions are locally invisible to the four selected primary metrics and are the coordinates of the redundant design hyperspace.</p>`;populateDirections();previewMode();}
+function populateDirections(){if(!lastSVD)return;let sp=$('space').value,sel=$('direction');sel.innerHTML='';if(sp==='secondary')return;if(sp==='null'){lastSVD.null_modes.forEach((m,i)=>{let p1=100*(m.link1_participation||0),p2=100*(m.link2_participation||0);sel.innerHTML+=`<option value="${i+1}">N${i+1} — L1 ${p1.toFixed(0)}% / L2 ${p2.toFixed(0)}%</option>`;});}else if(sp==='active'){lastSVD.active_modes.forEach((m,i)=>{let p1=100*(m.link1_participation||0),p2=100*(m.link2_participation||0);sel.innerHTML+=`<option value="${i+1}">V${i+1} — L1 ${p1.toFixed(0)}% / L2 ${p2.toFixed(0)}%</option>`;});}sel.onchange=previewMode;}
+function spaceChanged(){let sp=$('space').value,sec=sp==='secondary',combo=sp==='active_combo',bal=sp==='active_balanced';$('objectiveBox').style.display=sec?'block':'none';$('weightsBox').style.display=combo?'block':'none';$('directionBox').style.display=(sec||combo||bal)?'none':'block';$('correct').disabled=(sp==='active'||combo||bal);if($('correct').disabled)$('correct').checked=false;else $('correct').checked=true;populateDirections();previewMode();}
+function previewMode(){
+  if(!lastSVD){$('modePreview').innerHTML='';return;}
+  let sp=$('space').value,mode=null,label='';
+  if(sp==='secondary'||sp==='active_combo'){$('modePreview').innerHTML=sp==='active_combo'?'<p><b>Weighted active combination.</b> Enter V1–V4 coefficients; the resulting direction is normalized when applied.</p>':'';return;}
+  if(sp==='active_balanced'){mode=lastSVD.balanced_active;label='balanced active direction';}
+  else {let k=parseInt($('direction').value||1)-1;mode=(sp==='null'?lastSVD.null_modes:lastSVD.active_modes)[k];label=(sp==='null'?'redundant N':'active V')+(k+1);}
+  if(!mode)return; let p1=100*(mode.link1_participation||0),p2=100*(mode.link2_participation||0), comp='';
+  if(sp==='active_balanced'&&mode.weights)comp=` Composition: ${mode.weights.map((w,i)=>`${w>=0?'+':''}${w.toFixed(2)}V${i+1}`).join(' ')}.`;
+  $('modePreview').innerHTML=`<p><b>Physical mode preview:</b> ${label}. <b>Link participation:</b> L1 ${p1.toFixed(1)}%, L2 ${p2.toFixed(1)}%.${comp} Buttons show ±0.08 perturbations without applying them.</p><div class="modegrid"><button onclick='drawShape(${JSON.stringify(mode.minus)},"− direction preview")'>Preview −</button><button onclick='drawShape(lastSVD.design,"Current design")'>Current</button><button onclick='drawShape(${JSON.stringify(mode.plus)},"+ direction preview")'>Preview +</button></div>`;
+}
+async function applyMove(){
+  if(moveBusy)return;
+  const mySeq=++moveRequestSeq;
+  const baseSections=JSON.parse(JSON.stringify(sections));
+  setMoveBusy(true); showMoveProgress('working');
+  try{
+    if(!lastSVD)await runSVD();
+    let p={...request(),client_id:clientId,expected_revision:designRevision,space:$('space').value,direction_index:parseInt($('direction').value||1),amplitude:parseFloat($('amp').value),objective:$('objective').value,nonlinear_correction:$('correct').checked,active_weights:[val('vw1'),val('vw2'),val('vw3'),val('vw4')]};
+    let d=await post('/api/v1/design/move',p);
+    if(mySeq!==moveRequestSeq)return; // stale browser response: never overwrite newer state
+    history.push(baseSections);
+    designRevision=d.design_revision;
+    sections={t1:d.design.t1,t2:d.design.t2};
+    drawShape(d.design); showMetrics(d.performance);
+    $('svd').innerHTML=`<p><b>Move completed.</b> ${d.note}</p><p>Design revision = <b>${designRevision}</b>; primary log-residual = <b>${d.primary_log_residual_inf.toExponential(2)}</b>; correction converged: <b>${d.correction_converged}</b>; null dimension: <b>${d.null_dimension}</b>; condition: <b>${d.condition.toFixed(3)}</b>.</p><p class="muted">The entire structure → path/control → performance → SVD transaction completed before this revision was committed.</p>`;
+    lastSVD=null;
+    await analyze();
+    if(mySeq!==moveRequestSeq)return;
+    await runSVD();
+    if(mySeq!==moveRequestSeq)return;
+    showMoveProgress('done');
+  }catch(e){
+    showMoveProgress('error',e&&e.message?e.message:'The move failed. The prior design remains active.');
+  }finally{
+    if(mySeq===moveRequestSeq)setMoveBusy(false);
+  }
+}
+function undoMove(){if(moveBusy||!history.length)return;sections=history.pop();lastSVD=null;analyze();}
+function uniformize(){if(moveBusy)return;sections={t1:Array(10).fill(val('t1')),t2:Array(10).fill(val('t2'))};history=[];lastSVD=null;performanceBaseline=null;analyze();}
+window.onload=async()=>{await analyze();await runSVD();spaceChanged();};
+</script></body></html>

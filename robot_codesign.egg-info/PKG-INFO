@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: robot-codesign
+Version: 0.12.0
+Summary: Interactive robot structure, path, control and SVD co-design framework
+Requires-Python: >=3.10
+Requires-Dist: numpy>=1.24
+Requires-Dist: scipy>=1.10
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: web
+Requires-Dist: fastapi>=0.110; extra == "web"
+Requires-Dist: uvicorn[standard]>=0.27; extra == "web"
+Requires-Dist: pydantic>=2.0; extra == "web"

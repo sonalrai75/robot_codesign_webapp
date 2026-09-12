@@ -1,0 +1,27 @@
+Milestone 26 — Fine pseudo-arclength continuation through the near-singular Chapter 5 region
+
+Start Hmax multiplier lambda: 0.861870742643
+Start sigma_min: 0.020758193256
+
+Best sigma_min: 0.012199519260
+At lambda: 0.859687819217
+Active singular values: [0.89465957 0.47409828 0.19693693 0.01219952]
+Condition number: 73.335641193
+Constraint residual infinity norm: 1.14631e-09
+Width range: 0.001752109780 to 0.537088472388 m
+
+Tangent-lambda sign change detected: True
+Sign-change step: 113
+
+Method:
+The prior tangent is projected into the current augmented null space at every point. This
+preserves branch orientation and, unlike choosing the tangent by repeatedly projecting
+the negative-lambda direction, allows the continuation parameter lambda to reverse sign
+through a fold. Sixteen tangent directions perpendicular to the current branch tangent
+are locally frozen to define a one-dimensional slice of the 17-D augmented solution
+manifold. Predictor-corrector pseudo-arclength continuation then advances on this slice.
+
+Interpretation:
+A zero crossing of tangent_lambda would indicate a turning point of lambda along this
+selected branch. A simultaneous very small sigma_min of the structural performance
+Jacobian would provide strong numerical evidence of fold-like rank-loss geometry.

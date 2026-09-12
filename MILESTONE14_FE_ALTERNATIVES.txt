@@ -1,0 +1,29 @@
+Milestone 14 — alternative FE formulation diagnostic
+
+Target intermediate frequencies: [48.0, 248.0] Hz
+
+Baseline EB consistent n=10: 58.6346, 184.4026 Hz
+Lumped mass: 57.1470, 174.9706 Hz
+Opposite section axis: 420.2010, 913.1145 Hz
+Timoshenko shear: 58.6229, 184.2668 Hz
+Base rotation fixed: 56.1259, 181.9066 Hz
+Element count n=2: 58.9596, 206.2385 Hz
+Element count n=4: 58.6674, 185.3362 Hz
+Element count n=6: 58.6408, 184.5936 Hz
+Element count n=10: 58.6346, 184.4026 Hz
+Element count n=20: 58.6337, 184.3738 Hz
+Element count n=40: 58.6336, 184.3720 Hz
+No joint mass: 59.5269, 185.3503 Hz
+No tip mass: 58.6912, 184.5829 Hz
+No concentrated masses: 59.5841, 185.5311 Hz
+
+Key observations:
+- Opposite rectangular bending axis makes both frequencies much too high.
+- Lumped mass changes frequencies only modestly and worsens f2.
+- Timoshenko shear deformation lowers frequencies; it cannot raise the second mode to 248 Hz.
+- Mesh refinement from 10 to 20/40 elements has negligible effect, so discretization is not the cause.
+- Removing concentrated masses changes the result only slightly.
+- Fixing base rotation changes the modal family radically and contradicts the thesis boundary condition.
+- A uniform stiffness/E scale would need 0.670 to fit f1 but 1.809 to fit f2, so one material/stiffness scale cannot fix both.
+
+Conclusion: none of these standard alternatives explains the 48/248-Hz pair. The mismatch is modal, not a simple overall stiffness, mass, or mesh-resolution error.

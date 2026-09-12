@@ -1,0 +1,38 @@
+Milestone 17 — Multiple demonstrations of redundant-space utility
+
+All scenarios preserve the four primary Chapter-5 performance targets
+Hmin=0.0066, Hmax=0.0281, f1=72 Hz, f2=279.3 Hz.
+
+Baseline mass=1.07159167 kg, smoothness=0.91566608, peak width=0.21282737 m, sigma_min=0.18310659, condition=4.29916.
+
+Mass-minimized
+  max target error = 1.49647e-06 %
+  mass = 0.91588164 kg (-14.531%)
+  smoothness = 0.73735365 (-19.474%)
+  peak width = 0.28016682 m (+31.640%)
+  sigma_min = 0.19423880 (+6.080%)
+  condition number = 3.89018
+
+Smoothness-minimized
+  max target error = 1.06542e-06 %
+  mass = 1.06144307 kg (-0.947%)
+  smoothness = 0.36918626 (-59.681%)
+  peak width = 0.18978009 m (-10.829%)
+  sigma_min = 0.17575984 (-4.012%)
+  condition number = 4.24915
+
+Peak-width-minimized
+  max target error = 1.30492e-07 %
+  mass = 0.96985021 kg (-9.494%)
+  smoothness = 0.46000383 (-49.763%)
+  peak width = 0.18976438 m (-10.836%)
+  sigma_min = 0.16890479 (-7.756%)
+  condition number = 4.55888
+
+Maneuverability (sigma_min) improved
+  max target error = 2.79853e-06 %
+  mass = 1.06343351 kg (-0.761%)
+  smoothness = 1.7301545 (+88.950%)
+  peak width = 0.22328794 m (+4.915%)
+  sigma_min = 0.21046549 (+14.942%)
+  condition number = 3.68947

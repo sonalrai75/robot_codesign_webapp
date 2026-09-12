@@ -1,0 +1,38 @@
+task_1
+  initial     :
+    q0(deg)=[-48.1896851  48.1896851]
+    q1(deg)=[-15.24526372  68.37536607]
+    geodesic length=0.154128132
+    max geodesic residual=3.469e-18
+    IK endpoint errors=5.551e-17, 0.000e+00
+  intermediate:
+    q0(deg)=[-105.17713727   17.39476886]
+    q1(deg)=[-58.7891076   44.54836179]
+    geodesic length=0.095727536
+    max geodesic residual=7.980e-12
+    IK endpoint errors=5.551e-17, 5.551e-17
+task_2
+  initial     :
+    q0(deg)=[-48.1896851  48.1896851]
+    q1(deg)=[0. 0.]
+    geodesic length=0.195732647
+    max geodesic residual=0.000e+00
+    IK endpoint errors=5.551e-17, 0.000e+00
+  intermediate:
+    q0(deg)=[-105.17713727   17.39476886]
+    q1(deg)=[0. 0.]
+    geodesic length=0.188678001
+    max geodesic residual=3.469e-18
+    IK endpoint errors=5.551e-17, 0.000e+00
+
+STDERR:
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 785, in warm_spreadsheet_runtime
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 720, in _warm_feature_flows
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 704, in _warm_collaboration_flows
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/generated/interface/models.py", line 32317, in hydrate_crdt_from_proto
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/remote.py", line 749, in __call__
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/client.py", line 150, in call
+artifact_tool.rpc.client.RemoteError: hydrateCrdtFromProto requires an empty collaborative document.

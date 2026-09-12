@@ -1,0 +1,45 @@
+Milestone 27 — Two structural solutions at the same performance vector across the fold
+
+Common continuation parameter:
+lambda = 0.85950000
+Hmax target = 0.024151950000
+
+Common target vector:
+[0.0066000000, 0.0241519500, 72.0000000000, 279.3000000000]
+
+Branch A performance:
+[6.600000e-03 2.415195e-02 7.200000e+01 2.793000e+02]
+Branch B performance:
+[6.60000000e-03 2.41519500e-02 7.20000004e+01 2.79300000e+02]
+
+Maximum log-performance residual:
+A = 6.81886e-10
+B = 6.24983e-09
+
+Structural separation:
+log-design Euclidean separation = 0.059839051
+RMS symmetric relative width separation = 0.013379166
+
+Branch A:
+mass = 1.275261932 kg
+smoothness = 11.116691983
+peak width = 0.537346408 m
+singular values = [0.89403723 0.47285548 0.19694805 0.01294928]
+width range = 0.001753094 to 0.537346408 m
+
+Branch B:
+mass = 1.276523347 kg
+smoothness = 11.244888492
+peak width = 0.537811794 m
+singular values = [0.89274609 0.47041628 0.19710804 0.01806038]
+width range = 0.001755195 to 0.537811794 m
+
+Interpretation:
+These two solutions were initialized from opposite sides of the pseudo-arclength turning point
+and then independently corrected to exactly the same Hmax multiplier while holding Hmin, f1,
+and f2 fixed. Distinct converged width vectors at the same target vector demonstrate local
+non-uniqueness of structural design on the selected continuation slice.
+
+This supports a fold interpretation of the branch geometry. It should still be described as a
+fold on a selected one-dimensional slice through a much higher-dimensional solution set, not
+as proof that the complete 16-dimensional constant-performance manifold is disconnected.

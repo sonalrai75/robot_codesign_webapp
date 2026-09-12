@@ -1,0 +1,25 @@
+Milestone 25 — Augmented pseudo-arclength continuation with Hmax target as continuation parameter
+
+We promote the Hmax target multiplier lambda to an unknown:
+  P_target(lambda) = [0.0066, lambda*0.0281, 72.0, 279.3].
+
+Unknowns: 20 log-width variables + lambda.
+Primary equations: 4.
+The 17-D tangent null space of the augmented Jacobian [J_z, dF/dlambda] is computed.
+A one-dimensional path is selected by projecting the negative lambda direction into that
+tangent space; the 16 transverse tangent directions are locally frozen. Predictor-corrector
+pseudo-arclength continuation is then applied.
+
+Best sigma_min = 0.0207579672
+At Hmax scale lambda = 0.8618707426
+Active singular values = [0.89728669 0.47953343 0.19731916 0.02075797]
+Condition number = 43.226135
+Constraint residual infinity norm = 1.73428e-08
+Width range = 0.001748220 to 0.535840960 m
+Passed lambda turning point = False
+
+Interpretation:
+This is a substantially stronger test of rank-loss geometry than fixed-target null-space search.
+A collapse of sigma_min in J_z means the four performance equations are becoming locally dependent
+with respect to structural design variables. A turning point in lambda under pseudo-arclength
+continuation would be direct evidence of fold-like geometry in this selected one-dimensional slice.

@@ -1,0 +1,24 @@
+link1
+  segment-angle range (deg): -1.2086607531102969 1.876013819026642
+  first two standalone frame frequencies, straight: [3406.51169349 4421.03837147]
+  first two standalone frame frequencies, curved:  [3405.41886006 4421.12033709]
+  ratio curved/straight: [0.99967919 1.00001854]
+link2
+  segment-angle range (deg): -0.8844113967100437 1.1966791052963592
+  first two standalone frame frequencies, straight: [ 377.21524099 1082.69923347]
+  first two standalone frame frequencies, curved:  [ 377.17727269 1082.59811455]
+  ratio curved/straight: [0.99989935 0.9999066 ]
+
+This is a geometry-sensitivity diagnostic only. It shows whether the
+measured centerline curvature is large enough to matter in a 2-D frame
+formulation; it is not yet the Chapter-5 two-link joint model.
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 785, in warm_spreadsheet_runtime
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 720, in _warm_feature_flows
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 704, in _warm_collaboration_flows
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/generated/interface/models.py", line 32317, in hydrate_crdt_from_proto
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/remote.py", line 749, in __call__
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/client.py", line 150, in call
+artifact_tool.rpc.client.RemoteError: hydrateCrdtFromProto requires an empty collaborative document.

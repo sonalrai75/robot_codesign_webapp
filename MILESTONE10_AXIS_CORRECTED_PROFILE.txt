@@ -1,0 +1,25 @@
+MILESTONE 10 — Figure 5-6 axis-corrected section interpretation
+
+Thesis-derived interpretation:
+- visible Figure 5-6 profile = in-plane rectangular width w(z)
+- fixed perpendicular dimensions: h1 = 0.010 m, h2 = 0.038 m
+- area A = h*w
+- planar bending second moment I = h*w^3/12
+
+Direct use of digitized profile:
+Hmin = 0.00982347
+Hmax = 0.09873106
+f1   = 442.2346 Hz
+f2   = 1205.3143 Hz
+
+Relative errors vs published final values:
+[ 48.84040182 251.35607658 514.21475861 331.54825019]
+
+Best single common scan-scale:
+scale = 0.25465385
+predictions = [3.56848971e-03 2.55919482e-02 1.06610808e+02 2.93724704e+02]
+relative errors (%) = [-45.93197414  -8.92545138  48.07056732   5.16459153]
+
+Interpretation:
+This run corrects the rectangular-section axis assignment used in earlier
+checks. It does not yet prove the scan ordinate is metrically exact.

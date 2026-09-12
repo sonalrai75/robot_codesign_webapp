@@ -1,0 +1,12 @@
+Milestone 20 — Extended collapse search
+
+Baseline singular values: [0.78727001 0.45330495 0.24451581 0.18310434]
+Best singular values: [0.97038982 0.47586859 0.20012214 0.08776969]
+sigma_min reduction: 52.066%
+Condition number: 11.056092
+Maximum primary target error: 1.1799e-06%
+Best width range: 0.00185393 to 0.50814542 m
+
+The search progressively relaxed geometric width bounds well beyond the physically plausible
+range in order to determine whether an accessible mathematical rank-loss point exists on the
+four-metric target manifold. A true collapse was defined diagnostically as sigma_min < 0.02.

@@ -1,0 +1,36 @@
+Final-design four-target identification check
+
+Targets:
+Hmin = 0.0066
+Hmax = 0.0281
+f1   = 72.0 Hz
+f2   = 279.3 Hz
+
+Hypothesis A: Figure 5-6 visible height is proportional to local FE thickness,
+with one independent unknown scale factor per link; stated out-of-plane widths
+remain fixed at 0.010 m and 0.038 m.
+
+Best-fit scale factors:
+link 1 = 1.59271542
+link 2 = 0.23972079
+
+Predictions:
+Hmin = 0.00458198  (-30.58%)
+Hmax = 0.02466895  (-12.21%)
+f1   = 97.2041 Hz  (+35.01%)
+f2   = 270.5195 Hz (-3.14%)
+
+Hypothesis B: one common ordinate scale for both links.
+Best scale = 0.25465391
+
+Predictions:
+Hmin = 0.00356849  (-45.93%)
+Hmax = 0.02559195  (-8.93%)
+f1   = 106.6108 Hz (+48.07%)
+f2   = 293.7248 Hz (+5.16%)
+
+Conclusion:
+Even after allowing unknown plot scaling, a thickness-only interpretation of
+the visible Figure 5-6 outline cannot simultaneously reproduce the four
+published final-design quantities. This strengthens the case for reconstructing
+the actual 2-D FE/node geometry and/or another missing section convention.

@@ -1,0 +1,12 @@
+Milestone 22 — Escape search beyond the pseudo-arclength local sigma valley
+
+Starting sigma_min: 0.085817852
+Best singular values: [0.96460955 0.47547243 0.20296371 0.08581785]
+Best sigma_min: 0.085817852
+Condition number: 11.240197
+Target error: 8.59483e-07 %
+Width range: 0.001796828 to 0.521530194 m
+
+This search deliberately permitted very large null-space moves and highly nonphysical
+section widths. Its purpose is diagnostic: determine whether a much lower-rank region
+exists on the same four-performance target manifold, not produce a realizable robot.

@@ -1,0 +1,38 @@
+source:
+  rho_kg_m3: 2700.0
+  youngs_modulus_pa: 2.7e10
+  nominal:
+    l1_m: 0.3000
+    l2_m: 0.3000
+    A1_m2: 0.0006
+    A2_m2: 0.0006
+    Hmax_target: 0.0752
+    Hmin_target: 0.0067
+    f1_target_hz: 116.3
+    f2_target_hz: 268.2
+  intermediate:
+    l1_m: 0.1419
+    l2_m: 0.4581
+    A1_m2: 0.0019
+    A2_m2: 0.0002
+    Hmax_target: 0.0231
+    Hmin_target: 0.0061
+    f1_target_hz: 48.0
+    f2_target_hz: 248.0
+  final:
+    Hmax_target: 0.0281
+    Hmin_target: 0.0066
+    f1_target_hz: 72.0
+    f2_target_hz: 279.3
+    link1_out_of_plane_width_m: 0.010
+    link2_out_of_plane_width_m: 0.038
+  fem:
+    elements_per_link: 10
+
+inferred:
+  joint2_concentrated_mass_M1_kg: 0.09966
+  tip_payload_M2_kg: 0.000122
+
+unknown_or_to_identify:
+  nominal_rectangular_width_thickness_pairs: null
+  exact_chapter5_actuator_torque_limits: null

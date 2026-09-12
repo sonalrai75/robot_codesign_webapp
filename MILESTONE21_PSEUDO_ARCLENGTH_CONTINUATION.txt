@@ -1,0 +1,28 @@
+Milestone 21 — Pseudo-arclength-style continuation toward Jacobian rank loss
+
+Starting point (Milestone 20) sigma_min: 0.08776409
+
+Best singular values:
+[0.964562737 0.475473861 0.202966206 0.085812088]
+
+Best sigma_min: 0.085812088
+Condition number: 11.240406
+Maximum primary target error: 8.59483e-07 %
+Width range: 0.001796828 to 0.521530194 m
+
+Method:
+At each target-matching point, the 16-D null space of the four-output Jacobian was
+computed. A tangent direction was chosen as the projected gradient direction that
+decreases sigma_min. To obtain a locally one-dimensional continuation path, the
+15 null directions perpendicular to that tangent were frozen. A predictor was taken
+along the tangent, followed by a 20-equation corrector consisting of the four primary
+performance equations, 15 transverse slice equations, and one arclength hyperplane
+condition. This is a pseudo-arclength-style continuation on a one-dimensional slice
+of the high-dimensional constant-performance manifold.
+
+Interpretation:
+A decreasing sigma_min together with a rapidly increasing condition number is evidence
+of approach to a Jacobian rank-loss region. It is not by itself proof of a bifurcation.
+If sigma_min can be made arbitrarily small and continuation can pass the singular point,
+the next test is to branch-probe on the other side and determine whether distinct
+target-matching solution families emerge.

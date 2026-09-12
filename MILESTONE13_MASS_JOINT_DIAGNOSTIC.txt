@@ -1,0 +1,28 @@
+Milestone 13 — endpoint/joint mass and joint-rotation diagnostic
+
+Published intermediate frequencies: 48, 248 Hz
+Current free-relative-rotation model: 58.6346, 184.4026 Hz
+
+Key result:
+Adding positive translational or rotary inertia cannot raise an ordered natural
+frequency for fixed K; it only increases M. Therefore an omitted gripper/payload
+rotary inertia cannot by itself explain why the current second mode is too low
+(184.4 Hz versus 248 Hz).
+
+Explicit rotary-inertia sweep confirms both modes move downward.
+
+Joint-2 relative rotation test:
+- Thesis wording says the two arms share displacement at joint 2 but are free
+  to rotate relative to each other.
+- Current model implements that condition.
+- Artificially locking the two rotations gives:
+  25.6058, 92.5766 Hz
+
+Thus changing the joint rotational constraint has a large modal effect, but the
+locked model is not the boundary condition stated in the thesis.
+
+Conclusion:
+The endpoint mass representation alone is not a viable explanation of the
+48/248-Hz discrepancy. The remaining candidates are FE formulation/section
+properties, configuration-dependent 2-D assembly details, or another historical
+modeling convention not explicitly documented in the thesis.

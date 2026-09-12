@@ -1,0 +1,33 @@
+Milestone 16 — Utility of the redundant design space
+
+Primary performance target:
+Hmin=0.0066, Hmax=0.0281, f1=72.0 Hz, f2=279.3 Hz
+
+A target-matching 20-width design was used.  The local log-performance
+Jacobian is 4 x 20, giving a 16-dimensional numerical null space.
+
+Initial singular values:
+[0.795349 0.45807  0.245605 0.181526]
+
+Secondary objective demonstrated: minimize structural mass while retaining
+the four primary performance quantities.
+
+Baseline:
+performance = [6.59999393e-03 2.81000201e-02 7.20000433e+01 2.79299145e+02]
+mass = 1.07573009 kg
+
+After nonlinear null-space continuation with SVD correction:
+performance = [6.60000000e-03 2.81000000e-02 7.19999999e+01 2.79300000e+02]
+relative errors (%) = [-1.11022e-14  0.00000e+00 -1.70150e-07 -8.88130e-09]
+mass = 0.93667634 kg
+mass reduction = 12.9265 %
+
+Interpretation:
+This is a direct numerical demonstration that the locally redundant
+directions are useful design freedom.  Motion is projected into the null
+space of the current performance Jacobian, then the full nonlinear model is
+re-evaluated and corrected back to the target manifold.  The null space is
+recomputed after each accepted move.
+
+This is a methodological demonstration in the reconstructed model, not a
+claim that the resulting shape is the historical 1993 final design.

@@ -1,0 +1,45 @@
+Milestone 11 — iterative SVD/pseudoinverse redesign (corrected)
+
+Source-supported setup:
+- Chapter 5 first-stage intermediate geometry is l1=0.1419 m, l2=0.4581 m,
+  A1=0.0019 m^2, A2=0.0002 m^2.
+- During second-stage shape optimization, perpendicular dimensions are fixed
+  at 0.010 m and 0.038 m.
+- Published final targets are Hmin=0.0066, Hmax=0.0281, f1=72 Hz, f2=279.3 Hz.
+
+Current-model intermediate prediction:
+[6.08266196e-03 2.30678224e-02 5.86345869e+01 1.84402610e+02]
+
+Published final target:
+[6.600e-03 2.810e-02 7.200e+01 2.793e+02]
+
+SVD/pseudoinverse reconstruction result:
+[6.59999076e-03 2.81003242e-02 7.19996189e+01 2.79294682e+02]
+
+Relative errors (%):
+[-0.00013996  0.0011536  -0.00052927 -0.00190391]
+
+Link 1 recovered in-plane widths (m):
+[0.19005337 0.19048653 0.19136028 0.19268212 0.19446626 0.19673607
+ 0.19951965 0.2028469  0.20676377 0.21132181]
+
+Link 2 recovered in-plane widths (m):
+[0.00621919 0.00798721 0.00809432 0.00639106 0.00475414 0.00721167
+ 0.00850764 0.0082726  0.00646288 0.00414673]
+
+Initial singular values:
+[0.63250568 0.35813031 0.24230362 0.19443366]
+
+Final singular values:
+[0.77625999 0.44764941 0.24150405 0.18162012]
+
+Method:
+20 log-width design variables; normalized log-performance residuals; central
+finite-difference Jacobian; SVD minimum-norm pseudoinverse step; trust-region
+clipping/backtracking; Jacobian recomputed after each accepted nonlinear step.
+
+Important limitation:
+The current FE reconstruction does not exactly reproduce the published
+intermediate frequencies before redesign. Therefore this is a test of the
+reconstructed 1993 inverse-design algorithm, not a claim that these widths are
+the historical final Chapter-5 design variables.

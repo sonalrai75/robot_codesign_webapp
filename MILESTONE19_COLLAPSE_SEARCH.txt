@@ -1,0 +1,19 @@
+Milestone 19 — Aggressive search for singular-value collapse in reconstructed Chapter 5 model
+
+Baseline active singular values: [0.7872544 0.4532925 0.2445185 0.1831028]
+Best active singular values: [0.8841153 0.4751338 0.2319184 0.1379529]
+Baseline sigma_min: 0.18310276
+Best sigma_min: 0.13795288
+Reduction in sigma_min: 24.658%
+Condition number at best point: 6.40882
+Maximum primary target error: 8.26835e-07%
+Width range at best point: 0.003693 to 0.231570 m
+
+Interpretation:
+If sigma_min approaches zero, the local row rank of the four-output performance Jacobian is collapsing.
+That would make the constant-performance manifold locally singular and would justify branch-tracking.
+If it does not approach zero despite aggressive continuation, the reconstructed Chapter 5 model may not
+contain a readily accessible rank-loss point within the explored physically bounded region; in that case
+a synthetic/parameter-augmented Chapter 5 continuation problem may be required to demonstrate the phenomenon.
+
+Weak-active-direction probe data are saved separately in MILESTONE19_COLLAPSE_PROBES.csv.

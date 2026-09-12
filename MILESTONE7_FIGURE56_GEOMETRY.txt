@@ -1,0 +1,23 @@
+Link 1
+  visible height: [0.02173 0.02472 0.02783 0.0317  0.0357  0.04032 0.04434 0.04922 0.0531
+ 0.05609]
+  centerline y:  [-0.001585 -0.00153  -0.001415 -0.00136  -0.00114  -0.00116  -0.00081
+ -0.0007   -0.00064  -0.000695]
+  height range: 0.021730 .. 0.056090 m
+  centerline range: -0.001585 .. -0.000640 m
+  max |centerline offset|: 0.001585 m
+Link 2
+  visible height: [0.05132 0.04745 0.04235 0.0397  0.03558 0.02971 0.02484 0.0214  0.01885
+ 0.01585]
+  centerline y:  [-6.40e-04 -4.75e-04 -5.85e-04  5.00e-05 -2.00e-04 -3.50e-05  3.00e-04
+  3.00e-04  5.25e-04  2.45e-04]
+  height range: 0.015850 .. 0.051320 m
+  centerline range: -0.000640 .. 0.000525 m
+  max |centerline offset|: 0.000640 m
+
+Interpretation:
+The scan contains two independent planar boundary coordinates per station.
+Their midpoint is not identically zero, so reducing the plot immediately
+to a single straight-centerline thickness variable discards geometry.
+This script does NOT yet claim the plotted ordinate is metrically equal
+to the FE section thickness; that mapping remains to be established.

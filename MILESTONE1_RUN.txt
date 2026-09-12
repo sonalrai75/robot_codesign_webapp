@@ -1,0 +1,22 @@
+nominal     : Hmin=0.00669152 Hmax=0.07519984  target=(0.0067, 0.0752)
+intermediate: Hmin=0.00610543 Hmax=0.02310053  target=(0.0061, 0.0231)
+
+Nominal configuration sweep:
+ -80 deg : Hmin=0.01431849 Hmax=0.06757287
+ -60 deg : Hmin=0.01241036 Hmax=0.06948100
+ -40 deg : Hmin=0.00971223 Hmax=0.07217913
+ -20 deg : Hmin=0.00751903 Hmax=0.07437233
+   0 deg : Hmin=0.00669152 Hmax=0.07519984
+  20 deg : Hmin=0.00751903 Hmax=0.07437233
+  40 deg : Hmin=0.00971223 Hmax=0.07217913
+  60 deg : Hmin=0.01241036 Hmax=0.06948100
+  80 deg : Hmin=0.01431849 Hmax=0.06757287
+
+STDERR:
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 772, in warm_spreadsheet_runtime
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/connection.py", line 37, in get_or_create_client
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/daemon.py", line 124, in start_daemon
+TimeoutError: Timed out waiting for artifact tool daemon socket. Set ARTIFACT_TOOL_RPC_DAEMON_STARTUP_TIMEOUT_S=<seconds> to increase the limit.

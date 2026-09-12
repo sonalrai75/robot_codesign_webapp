@@ -1,0 +1,42 @@
+Milestone 12 — shape similarity / null-space smoothing experiment
+
+Question:
+Does a smooth Figure-5-6-like flare/taper emerge naturally among designs that
+match the four published final performance values?
+
+Unconstrained exact-performance SVD solution:
+- Matches all four targets essentially exactly.
+- Link 1 is nearly uniform with mild widening.
+- Link 2 is oscillatory, not a smooth taper.
+
+Smoothness regularization sweep:
+lambda   max target error (%)   log-width roughness
+0        ~0                     0.90390
+0.01     0.0117                 0.90035
+0.03     0.0402                 0.89215
+0.1      0.1608                 0.86417
+0.3      0.2875                 0.75538
+1.0      0.8193                 0.59331
+3.0      1.8324                 0.53507
+10       3.9534                 0.42090
+
+Best smoothed design while keeping every target within 0.5%:
+lambda=0.3
+outputs = [0.0066047383, 0.0281185753, 72.2069702, 278.670443]
+errors (%) = [0.07179, 0.06610, 0.28746, -0.22541]
+The profile remains non-monotonic, especially on link 2.
+
+Topology-constrained test:
+Enforced link 1 monotonically widening toward joint and link 2 monotonically
+tapering toward tip, qualitatively matching Figure 5-6.
+
+Best result:
+outputs = [0.0065441361, 0.0259709865, 89.6690654, 259.970858]
+errors (%) = [-0.8464, -7.5766, +24.5404, -6.9206]
+
+Conclusion:
+Under the CURRENT reconstructed FE model, the thesis-like visual topology does
+not emerge naturally while reproducing all four final performance values.
+This is evidence that the remaining FE/modeling discrepancy matters. It is not
+evidence that the thesis shape is inconsistent, because the current model
+already fails to reproduce the published intermediate frequencies exactly.
