@@ -1,7 +1,117 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Robot Co-Design Laboratory</title>
 <style>
 body{font-family:system-ui,Arial;margin:0;background:#f6f7f9;color:#17202a}.wrap{max-width:1380px;margin:auto;padding:18px}.grid{display:grid;grid-template-columns:360px 1fr;gap:16px}.card{background:white;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:14px}label{display:block;font-size:12px;margin-top:7px}input,select,button{width:100%;box-sizing:border-box;padding:8px;margin-top:3px}button{cursor:pointer;font-weight:600}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.metric{border:1px solid #ddd;border-radius:8px;padding:10px}.metric b{display:block;font-size:17px}.plots{display:grid;grid-template-columns:1fr 1fr;gap:12px}.plot{width:100%;height:330px;background:#fafafa;border:1px solid #ddd;border-radius:8px}.shapeplot{height:270px}.controlplot{height:500px}.bar{height:14px;background:#555;margin:4px 0;border-radius:3px}.muted{color:#667;font-size:12px}.modegrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.pill{display:inline-block;border:1px solid #bbb;border-radius:14px;padding:3px 8px;margin:2px;font-size:12px}.warn{background:#fff5da;padding:8px;border-radius:6px;font-size:12px}.moveprogress{margin-top:8px;padding:9px;border:1px solid #c9d7e5;border-radius:7px;background:#f4f8fc;font-size:12px;line-height:1.55}.moveprogress .pending{color:#667}.moveprogress .done{color:#276749;font-weight:600}button:disabled,input:disabled,select:disabled{cursor:not-allowed;opacity:.58}.matrix{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;background:#f7f8fa;border:1px solid #e2e5e9;border-radius:6px;padding:8px}.inspectgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.inspectbox{border:1px solid #ddd;border-radius:8px;padding:10px}.inspectbox b{display:block;margin-bottom:5px}.changeplot{width:100%;height:360px;background:#fafafa;border:1px solid #ddd;border-radius:8px}.changelegend{display:flex;gap:16px;align-items:center;margin-top:6px;font-size:12px;color:#667}.swatch{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:4px;vertical-align:-2px}@media(max-width:800px){.inspectgrid{grid-template-columns:1fr}}h3{margin-top:2px}@media(max-width:950px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.plots{grid-template-columns:1fr}}
-</style></head><body><div class="wrap"><h1>Robot Co-Design Laboratory <span class="muted">v0.12 — distributed inertia + evolving-SVD search + metric change charts</span></h1><p><a href="/target-search" style="font-weight:700">Open Global Target Search →</a> &nbsp; Specify performance goals and let the evolving SVD algorithm take multiple nonlinear steps automatically.</p><div class="grid"><div>
+
+.guide{background:#eef6ff;border:1px solid #b8d5f0;border-radius:10px;padding:14px 16px;margin:0 0 16px 0}
+.guide summary{cursor:pointer;font-weight:750;font-size:16px}
+.guide h3{margin:18px 0 7px}
+.guide p,.guide li{line-height:1.5}
+.guide ol,.guide ul{padding-left:24px}
+.guide .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.guide .step{background:white;border:1px solid #cbddec;border-radius:8px;padding:10px}
+.guide .step b{display:block;margin-bottom:4px}
+.guide .example{background:white;border-left:4px solid #4d88b8;padding:10px 12px;margin:10px 0;border-radius:4px}
+.guide .guidebtn{display:inline-block;background:#315f8c;color:white;text-decoration:none;font-weight:700;padding:9px 12px;border-radius:7px;margin-top:5px}
+@media(max-width:950px){.guide .steps{grid-template-columns:1fr}}
+
+</style></head><body><div class="wrap"><h1>Robot Co-Design Laboratory <span class="muted">v0.12 — distributed inertia + evolving-SVD search + metric change charts</span></h1><p><a href="/target-search" style="font-weight:700">Open Global Target Search →</a> &nbsp; Specify performance goals and let the evolving SVD algorithm take multiple nonlinear steps automatically.</p>
+<details class="guide">
+<summary>New here? Start with this short user guide</summary>
+
+<h3>What does this application do?</h3>
+<p>
+This laboratory lets you explore how a robot’s <b>physical design</b>, <b>motion path</b>,
+and <b>control limits</b> interact. You can analyze a starting robot, inspect its
+performance, use SVD to discover important design directions, and then change the
+design while watching the performance update.
+</p>
+
+<p>
+You do not need to know SVD or optimization mathematics to get started. A useful way
+to think about the app is: <b>define a robot → analyze it → see which design changes
+matter → try a change → compare the result.</b>
+</p>
+
+<div class="steps">
+  <div class="step"><b>1. Define the robot</b>Use the left-hand fields for link lengths, masses and section widths.</div>
+  <div class="step"><b>2. Define the task</b>Choose the start/end point, path type and joint torque limits.</div>
+  <div class="step"><b>3. Analyze performance</b>Click <b>Analyze path</b> to compute the path, control solution and performance metrics.</div>
+  <div class="step"><b>4. Explore design directions</b>Click <b>Compute SVD / hyperspace</b>, preview a direction, then apply a small design move.</div>
+</div>
+
+<h3>First 5-minute tutorial</h3>
+<ol>
+  <li><b>Leave the default values unchanged.</b> The page opens with a complete two-link example.</li>
+  <li><b>Look at the robot and blue task-space path.</b> Green marks the start and red marks the end.</li>
+  <li><b>Click a point on the path.</b> The “Selected path point” panel will show the robot configuration, inertia and joint torque demand at that point.</li>
+  <li><b>Review the Performance panel.</b> This is the baseline for the current design.</li>
+  <li><b>Click “Compute SVD / hyperspace”.</b> The app separates design directions into active directions and redundant/null directions.</li>
+  <li><b>Choose a move type.</b> For a first experiment, select a redundant/null direction and keep the default small step.</li>
+  <li><b>Use Preview − / Current / Preview +</b> to see how the structure would change before applying anything.</li>
+  <li><b>Click “Apply design move”.</b> The app recomputes structure, path/control, performance and SVD before committing the new design.</li>
+  <li><b>Compare the Performance change from starting point chart.</b> It shows which metrics increased and decreased relative to your original design.</li>
+  <li><b>Use “Undo last design move”</b> if you want to return to the previous structural design.</li>
+</ol>
+
+<h3>What do the main terms mean?</h3>
+<ul>
+  <li><b>Design variables:</b> physical quantities the app can change, especially the distributed section widths along the two links.</li>
+  <li><b>Performance metrics:</b> outputs such as travel time, structural frequencies, mass, smoothness and inertia-related quantities.</li>
+  <li><b>SVD:</b> Singular Value Decomposition. Here it identifies combinations of design changes that strongly or weakly affect the selected primary performance measures.</li>
+  <li><b>Active direction (V):</b> a design direction that changes primary performance relatively strongly.</li>
+  <li><b>Null/redundant direction (N):</b> a local design direction that has little first-order effect on the selected primary performance measures.</li>
+  <li><b>Secondary objective:</b> a goal such as lower mass or smoother sections that can be pursued inside the redundant design space.</li>
+  <li><b>Condition number:</b> an indicator of how unevenly sensitive the performance is to different local design directions.</li>
+</ul>
+
+<h3>How should a beginner use the move types?</h3>
+<p>
+Start with <b>Redundant/null direction</b>. It is the easiest way to see the idea of
+changing the physical robot while trying to preserve the selected primary performance
+metrics. Then try an <b>Active SVD direction</b> to see a direction that changes
+performance more strongly.
+</p>
+
+<p>
+The <b>Secondary objective in redundant space</b> option is useful once you are
+comfortable with the basic workflow. It lets the app search the redundant design
+freedom for a goal such as lower mass, smoother section profiles, reduced peak width,
+or improved maneuverability.
+</p>
+
+<h3>What does “Correct nonlinear drift” mean?</h3>
+<p>
+Null-space directions are local approximations. A finite design move can drift away
+from the constant-performance surface. With correction enabled, the application
+recomputes the nonlinear model and projects the result back toward the protected
+primary-performance manifold.
+</p>
+
+<div class="example">
+<b>Recommended beginner experiment:</b><br>
+Use the default robot → compute SVD → select a null direction → preview ±0.08 →
+apply +0.08 → compare the performance-change chart → undo → try the opposite direction.
+</div>
+
+<h3>When should I use Global Target Search?</h3>
+<p>
+The main laboratory is best for understanding individual design directions and
+manually exploring the design space. When you know the performance you want—for
+example, a maximum travel time, a minimum structural frequency, or a mass limit—use
+<b>Global Target Search</b>. It automatically takes multiple evolving-SVD steps and
+can also use null-space freedom for secondary objectives.
+</p>
+
+<a class="guidebtn" href="/target-search">Open Global Target Search and its detailed tutorial →</a>
+
+<h3>Important note</h3>
+<p>
+This is a design-exploration and research tool. Results depend on the mathematical
+and simulation models used by the application and should be independently validated
+before physical construction, safety-critical use, or engineering certification.
+</p>
+</details>
+<div class="grid"><div>
 <div class="card"><h3>2-DOF planar robot</h3><div class="row"><label>L1 (m)<input id="l1" value="0.1419"></label><label>L2 (m)<input id="l2" value="0.4581"></label></div><div class="row"><label>Joint mass (kg)<input id="jm" value="0.09966"></label><label>Tip mass (kg)<input id="tm" value="0.000122"></label></div><div class="row"><label>Out-of-plane width 1 (m)<input id="w1" value="0.01"></label><label>Out-of-plane width 2 (m)<input id="w2" value="0.038"></label></div><div class="row"><label>Initial in-plane width 1 (m)<input id="t1" value="0.19"></label><label>Initial in-plane width 2 (m)<input id="t2" value="0.0052631579"></label></div><button id="uniformBtn" onclick="uniformize()">Reset to uniform sections</button></div>
 <div class="card"><h3>Task and path</h3><div class="row"><label>Start x<input id="sx" value="0.4"></label><label>Start y<input id="sy" value="0"></label></div><div class="row"><label>End x<input id="ex" value="0.4"></label><label>End y<input id="ey" value="0.2"></label></div><label>Path<select id="path"><option value="geodesic">Inertia-metric geodesic</option><option value="joint_line">Straight joint space</option><option value="cartesian_line">Straight Cartesian + IK</option><option value="optimized_cubic">Optimized cubic (experimental)</option></select></label><div class="row"><label>Torque 1 (N m)<input id="u1" value="40"></label><label>Torque 2 (N m)<input id="u2" value="40"></label></div><button id="analyzeBtn" onclick="analyze()">Analyze path</button><button id="svdBtn" onclick="runSVD()">Compute SVD / hyperspace</button><div id="status" class="muted"></div></div>
 <div class="card"><h3>Design hyperspace move</h3><label>Move type<select id="space" onchange="spaceChanged()"><option value="null">Redundant/null direction — preserve primary metrics</option><option value="active">Active SVD direction — V1…V4</option><option value="active_combo">Active SVD combination — weighted V1…V4</option><option value="active_balanced">Balanced active direction — impact both links</option><option value="secondary">Secondary objective in redundant space</option></select></label><div id="directionBox"><label>Direction<select id="direction"></select></label></div><div id="weightsBox" style="display:none"><div class="row"><label>V1 weight<input id="vw1" value="1"></label><label>V2 weight<input id="vw2" value="0"></label></div><div class="row"><label>V3 weight<input id="vw3" value="0"></label><label>V4 weight<input id="vw4" value="0"></label></div><div class="muted">Weights are normalized automatically before the move.</div></div><div id="objectiveBox" style="display:none"><label>Secondary objective<select id="objective"><option value="mass">Minimize mass</option><option value="smoothness">Smooth section profile</option><option value="peak_width">Reduce peak width</option><option value="rms_width">Reduce RMS width</option><option value="maneuverability">Increase σmin / redesign maneuverability</option></select></label></div><label>Step in log-design space: <b id="ampText">+0.080</b><input id="amp" type="range" min="-0.30" max="0.30" step="0.01" value="0.08" oninput="$('ampText').textContent=(+this.value>=0?'+':'')+(+this.value).toFixed(3)"></label><label><input id="correct" type="checkbox" checked style="width:auto"> Correct nonlinear drift back to the primary-performance manifold</label><button id="applyMoveBtn" onclick="applyMove()">Apply design move</button><button id="undoMoveBtn" onclick="undoMove()">Undo last design move</button><div id="moveProgress" class="moveprogress" style="display:none"></div><div class="warn">Null-space directions are local. A finite step can leave the constant-performance manifold, so the correction option recomputes the nonlinear model and projects back toward the four primary targets.</div></div>
