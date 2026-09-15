@@ -10,10 +10,10 @@ from robot_codesign.models import Planar2DOFRobot
 from robot_codesign.paths import PLANNERS
 from robot_codesign.analysis import metric_length, euclidean_joint_length, path_min_time_control
 from robot_codesign.analysis.svd_design import analyze_design_space, secondary_direction, secondary_metric, corrected_null_move
-from robot_codesign.analysis.target_search import TargetSpec, SecondarySpec, run_target_search, catastrophe_diagnostics
+from robot_codesign.analysis.target_search import TargetSpec, SecondarySpec, run_target_search, catastrophe_diagnostics, search_catastrophes
 
 ROOT=Path(__file__).resolve().parent
-app=FastAPI(title="Robot Co-Design Laboratory",version="0.14.0")
+app=FastAPI(title="Robot Co-Design Laboratory",version="0.15.0")
 app.mount("/static",StaticFiles(directory=ROOT/"static"),name="static")
 
 class RobotInput(BaseModel):
@@ -56,6 +56,12 @@ class TargetSearchInput(AnalyzeInput):
     # v0.12 compatibility fields; ignored when secondary_objectives is supplied.
     secondary_objective: str = "none"
     secondary_weight: float = 0.25
+
+class CatastropheSearchInput(TargetSearchInput):
+    control_metrics: list[str] = Field(default_factory=list)
+    span_fraction: float = 0.15
+    grid_points: int = 5
+    solve_iterations: int = 10
 
 class DesignMoveInput(AnalyzeInput):
     # Optimistic-concurrency metadata.  The browser owns a stable client_id and
@@ -268,6 +274,28 @@ def catastrophe_analysis(req:TargetSearchInput):
             specs.append(TargetSpec(t.metric,t.relation,float(t.value),float(t.tolerance)))
         context={"start_xy":req.start_xy,"end_xy":req.end_xy,"path_type":req.path_type,"branch":req.branch,"torque_limits":req.torque_limits,"timing_nodes":27}
         return catastrophe_diagnostics(robot,specs,context,force_deep=True)
+    except Exception as e:
+        raise HTTPException(400,str(e))
+
+
+@app.post("/api/v1/catastrophe-search")
+def catastrophe_search(req:CatastropheSearchInput):
+    """Search a two-control performance region for fold/cusp candidates."""
+    try:
+        robot=build_robot(req.robot)
+        allowed={"H_min","H_max","f1_Hz","f2_Hz","travel_time_s","mass_kg"}
+        specs=[]
+        for t in req.targets:
+            if t.metric not in allowed: raise ValueError(f"Unsupported target metric: {t.metric}")
+            if t.relation not in {"equal","min","max"}: raise ValueError(f"Unsupported target relation: {t.relation}")
+            if t.value <= 0: raise ValueError(f"Target {t.metric} must be positive")
+            specs.append(TargetSpec(t.metric,t.relation,float(t.value),float(t.tolerance)))
+        for m in req.control_metrics:
+            if m not in allowed: raise ValueError(f"Unsupported catastrophe-search control: {m}")
+        context={"start_xy":req.start_xy,"end_xy":req.end_xy,"path_type":req.path_type,"branch":req.branch,"torque_limits":req.torque_limits,"timing_nodes":27}
+        return search_catastrophes(robot,specs,context,control_metrics=req.control_metrics or None,
+            span_fraction=float(req.span_fraction),grid_points=int(req.grid_points),
+            solve_iterations=int(req.solve_iterations),step_limit=float(req.step_limit))
     except Exception as e:
         raise HTTPException(400,str(e))
 

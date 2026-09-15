@@ -30,3 +30,17 @@ def test_vector_map_cusp_candidate():
     d=diagnose_map_singularity(J,ev,np.zeros(2),["x","y"],force_deep=True)
     assert d["level"] == "cusp_candidate"
     assert d["classification"] == "A3 cusp"
+
+from robot_codesign.analysis.catastrophe import catastrophe_search_scores
+
+
+def test_search_score_prefers_stronger_fold_geometry():
+    strong=catastrophe_search_scores({"sigma_ratio":.002,"second_alignment":.8,"third_alignment":.1})
+    weak=catastrophe_search_scores({"sigma_ratio":.08,"second_alignment":.2,"third_alignment":.1})
+    assert strong["fold_score"] < weak["fold_score"]
+
+
+def test_search_score_prefers_cusp_geometry():
+    cusp=catastrophe_search_scores({"sigma_ratio":.002,"second_alignment":.01,"third_alignment":.8})
+    ordinary=catastrophe_search_scores({"sigma_ratio":.002,"second_alignment":.7,"third_alignment":.8})
+    assert cusp["cusp_score"] < ordinary["cusp_score"]

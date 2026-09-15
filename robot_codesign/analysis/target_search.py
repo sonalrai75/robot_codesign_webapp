@@ -7,7 +7,7 @@ import numpy as np
 from robot_codesign.analysis.svd_design import analyze_design_space, secondary_metric
 from robot_codesign.paths import PLANNERS
 from robot_codesign.analysis import path_min_time_control
-from robot_codesign.analysis.catastrophe import diagnose_map_singularity
+from robot_codesign.analysis.catastrophe import diagnose_map_singularity, catastrophe_search_scores
 
 PRIMARY_INDEX = {
     "H_min": 0,
@@ -206,6 +206,131 @@ def catastrophe_diagnostics(robot, targets: list[TargetSpec], context: dict, for
 
     return diagnose_map_singularity(J, evaluate, x0, names, force_deep=force_deep)
 
+
+
+def search_catastrophes(
+    robot, targets: list[TargetSpec], context: dict,
+    control_metrics: list[str] | None = None,
+    span_fraction: float = 0.15, grid_points: int = 5,
+    solve_iterations: int = 10, step_limit: float = 0.16,
+) -> dict:
+    """Automatically search a two-control target region for fold/cusp candidates.
+
+    Each grid point changes two selected performance target values, solves back
+    toward that level set with the existing evolving-SVD target solver, then
+    evaluates the local higher-order singularity diagnostic.  This is a
+    discovery scan; candidates still require continuation/transversality checks.
+    """
+    if len(targets) < 2:
+        raise ValueError("Catastrophe search requires at least two enabled performance targets")
+    if not (0.01 <= span_fraction <= 0.50):
+        raise ValueError("span_fraction must be between 0.01 and 0.50")
+    if grid_points not in {3, 5, 7}:
+        raise ValueError("grid_points must be 3, 5, or 7")
+    if not (1 <= solve_iterations <= 30):
+        raise ValueError("solve_iterations must be 1..30")
+
+    # Use the local SVD to propose controls when the caller does not choose them.
+    seed_diag = catastrophe_diagnostics(robot, targets, context, force_deep=True)
+    available = [t.metric for t in targets]
+    controls = list(control_metrics or seed_diag.get("suggested_control_metrics", []))
+    controls = [m for m in controls if m in available]
+    for m in available:
+        if m not in controls:
+            controls.append(m)
+        if len(controls) == 2:
+            break
+    controls = controls[:2]
+    if len(controls) != 2 or controls[0] == controls[1]:
+        raise ValueError("Choose two distinct enabled target metrics as catastrophe-search controls")
+
+    base = {t.metric: float(t.value) for t in targets}
+    factors = np.linspace(1.0-span_fraction, 1.0+span_fraction, grid_points)
+    points = []
+    warm = robot
+    for i, fa in enumerate(factors):
+        row_factors = factors if i % 2 == 0 else factors[::-1]  # serpentine warm starts
+        for fb in row_factors:
+            varied=[]
+            for t in targets:
+                value=base[t.metric]
+                relation=t.relation
+                if t.metric == controls[0]:
+                    value *= float(fa); relation="equal"
+                elif t.metric == controls[1]:
+                    value *= float(fb); relation="equal"
+                varied.append(TargetSpec(t.metric, relation, value, t.tolerance))
+            try:
+                solved=run_target_search(warm,varied,context,max_iterations=solve_iterations,
+                                         step_limit=step_limit,secondary_objectives=[],
+                                         null_step_fraction=0.0,safety_cap=max(30,solve_iterations))
+                candidate=solved["final_robot"]
+                diag=catastrophe_diagnostics(candidate,varied,context,force_deep=True)
+                scores=catastrophe_search_scores(diag)
+                _, merit, feasible, _ = _target_state(target_metrics(candidate,varied,context),varied)
+                rec={
+                    "control_1":controls[0], "control_1_value":float(base[controls[0]]*fa),
+                    "control_2":controls[1], "control_2_value":float(base[controls[1]]*fb),
+                    "factor_1":float(fa), "factor_2":float(fb),
+                    "feasible":bool(feasible), "target_merit":float(merit),
+                    "solver_status":solved["status"],
+                    "classification":diag.get("classification","none"),
+                    "level":diag.get("level","regular"),
+                    "sigma_min":float(diag.get("sigma_min",0.0)),
+                    "sigma_ratio":float(diag.get("sigma_ratio",1.0)),
+                    "condition":diag.get("condition"),
+                    "a2":diag.get("projected_second_a2"),
+                    "a3":diag.get("projected_third_a3"),
+                    "second_alignment":diag.get("second_alignment"),
+                    "third_alignment":diag.get("third_alignment"),
+                    **scores,
+                    "t1":list(map(float,candidate.t1)), "t2":list(map(float,candidate.t2)),
+                }
+                # Penalize points that did not reach the requested level set.
+                if not feasible:
+                    rec["fold_score"] += 10.0 + merit
+                    rec["cusp_score"] += 10.0 + merit
+                points.append(rec)
+                if feasible:
+                    warm=candidate
+            except Exception as exc:
+                points.append({
+                    "control_1":controls[0],"control_1_value":float(base[controls[0]]*fa),
+                    "control_2":controls[1],"control_2_value":float(base[controls[1]]*fb),
+                    "factor_1":float(fa),"factor_2":float(fb),
+                    "feasible":False,"error":str(exc),
+                    "fold_score":1e9,"cusp_score":1e9,
+                })
+
+    valid=[p for p in points if p.get("feasible") and p.get("sigma_ratio") is not None]
+    fold=sorted(valid,key=lambda p:p["fold_score"])[:5]
+    cusp=sorted(valid,key=lambda p:p["cusp_score"])[:5]
+
+    # A sign change in a2 between nearby feasible points is particularly useful
+    # for locating a possible cusp on a fold locus.
+    crossings=[]
+    for a in valid:
+        if a.get("a2") is None: continue
+        for b in valid:
+            if b is a or b.get("a2") is None: continue
+            di=abs(a["factor_1"]-b["factor_1"]); dj=abs(a["factor_2"]-b["factor_2"])
+            adjacent=(di < 1e-12 and dj <= 2*span_fraction/(grid_points-1)+1e-12) or (dj < 1e-12 and di <= 2*span_fraction/(grid_points-1)+1e-12)
+            if adjacent and a["a2"]*b["a2"] < 0:
+                key=tuple(sorted(((a["factor_1"],a["factor_2"]),(b["factor_1"],b["factor_2"]))))
+                if not any(c["key"]==key for c in crossings):
+                    crossings.append({"key":key,"point_a":a,"point_b":b})
+    for c in crossings: c.pop("key",None)
+
+    return {
+        "controls":controls, "span_fraction":float(span_fraction),
+        "grid_points":int(grid_points), "evaluated_points":len(points),
+        "feasible_points":len(valid), "points":points,
+        "best_fold_candidates":fold, "best_cusp_candidates":cusp,
+        "a2_sign_crossings":crossings[:10],
+        "seed_diagnostic":seed_diag,
+        "message":"Search completed. Rankings identify regions for follow-up continuation; they are not catastrophe classifications.",
+        "caution":"A cusp claim requires following the fold locus and verifying nondegeneracy/transversality. Search scores only prioritize numerical experiments.",
+    }
 
 def _secondary_gradient(robot, metric: str) -> np.ndarray:
     """Gradient of a secondary metric in log-design coordinates.

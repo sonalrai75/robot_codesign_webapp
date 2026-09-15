@@ -164,3 +164,18 @@ def scalar_normal_form_diagnostics(
     else:
         kind = "unclassified"
     return {"classification": kind, "d1": d1, "d2": d2, "d3": d3}
+
+
+def catastrophe_search_scores(diagnostic: dict) -> dict:
+    """Dimensionless ranking scores used by the automated control-space search.
+
+    Lower is better.  The fold score rewards rank loss plus a strong quadratic
+    critical term.  The cusp score rewards rank loss, a weak quadratic term,
+    and a nonzero cubic term.  These are discovery scores, not classifications.
+    """
+    ratio = max(float(diagnostic.get("sigma_ratio", 1.0)), 0.0)
+    q2 = max(float(diagnostic.get("second_alignment", 0.0)), 0.0)
+    q3 = max(float(diagnostic.get("third_alignment", 0.0)), 0.0)
+    fold = ratio + 0.02 / max(q2, 1.0e-4)
+    cusp = ratio + q2 + max(0.0, 0.15 - q3)
+    return {"fold_score": float(fold), "cusp_score": float(cusp)}
