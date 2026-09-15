@@ -10,10 +10,10 @@ from robot_codesign.models import Planar2DOFRobot
 from robot_codesign.paths import PLANNERS
 from robot_codesign.analysis import metric_length, euclidean_joint_length, path_min_time_control
 from robot_codesign.analysis.svd_design import analyze_design_space, secondary_direction, secondary_metric, corrected_null_move
-from robot_codesign.analysis.target_search import TargetSpec, SecondarySpec, run_target_search
+from robot_codesign.analysis.target_search import TargetSpec, SecondarySpec, run_target_search, catastrophe_diagnostics
 
 ROOT=Path(__file__).resolve().parent
-app=FastAPI(title="Robot Co-Design Laboratory",version="0.13.0")
+app=FastAPI(title="Robot Co-Design Laboratory",version="0.14.0")
 app.mount("/static",StaticFiles(directory=ROOT/"static"),name="static")
 
 class RobotInput(BaseModel):
@@ -118,7 +118,8 @@ def target_search_page(): return FileResponse(ROOT/"static"/"target_search.html"
 def capabilities():
     return {"robot_models":["planar_2dof"],"path_types":list(PLANNERS),"primary_metrics":["H_min","H_max","f1_Hz","f2_Hz"],
             "secondary_metrics":["mass","smoothness","peak_width","rms_width","maneuverability"],
-            "architecture":"DOF-agnostic model/path/metric interfaces; V0.2 adds physical design-distribution and SVD/null-space exploration"}
+            "catastrophe_analysis":["near-rank-loss screen","higher-order fold/cusp diagnostics"],
+            "architecture":"DOF-agnostic model/path/metric interfaces; evolving-SVD target/null-space search with conservative manifold singularity diagnostics"}
 
 @app.post("/api/v1/analyze")
 def analyze(req:AnalyzeInput):
@@ -234,9 +235,10 @@ def target_search(req:TargetSearchInput):
             secondary_specs.append(SecondarySpec(o.metric,o.direction,float(o.weight)))
         if not (0 <= req.null_step_fraction <= 1):
             raise ValueError("null_step_fraction must be between 0 and 1")
+        search_context={"start_xy":req.start_xy,"end_xy":req.end_xy,"path_type":req.path_type,"branch":req.branch,"torque_limits":req.torque_limits,"timing_nodes":27}
         result=run_target_search(
             robot,specs,
-            {"start_xy":req.start_xy,"end_xy":req.end_xy,"path_type":req.path_type,"branch":req.branch,"torque_limits":req.torque_limits,"timing_nodes":27},
+            search_context,
             max_iterations=req.max_iterations,step_limit=float(req.step_limit),
             secondary_objectives=secondary_specs,null_step_fraction=float(req.null_step_fraction),
             secondary_objective=req.secondary_objective,secondary_weight=float(req.secondary_weight),
@@ -245,7 +247,27 @@ def target_search(req:TargetSearchInput):
         final=result.pop("final_robot")
         result["final_design"]=design_payload(final)
         result["final_performance"]=performance_payload(final,req)
+        # Automated manifold/catastrophe screen. Deep derivative tests run only
+        # when the selected target Jacobian is near rank loss.
+        result["catastrophe_analysis"]=catastrophe_diagnostics(final,specs,search_context,force_deep=False)
         return result
+    except Exception as e:
+        raise HTTPException(400,str(e))
+
+@app.post("/api/v1/catastrophe-analysis")
+def catastrophe_analysis(req:TargetSearchInput):
+    """Force higher-order local singularity diagnostics at the supplied design."""
+    try:
+        robot=build_robot(req.robot)
+        specs=[]
+        allowed={"H_min","H_max","f1_Hz","f2_Hz","travel_time_s","mass_kg"}
+        for t in req.targets:
+            if t.metric not in allowed: raise ValueError(f"Unsupported target metric: {t.metric}")
+            if t.relation not in {"equal","min","max"}: raise ValueError(f"Unsupported target relation: {t.relation}")
+            if t.value <= 0: raise ValueError(f"Target {t.metric} must be positive")
+            specs.append(TargetSpec(t.metric,t.relation,float(t.value),float(t.tolerance)))
+        context={"start_xy":req.start_xy,"end_xy":req.end_xy,"path_type":req.path_type,"branch":req.branch,"torque_limits":req.torque_limits,"timing_nodes":27}
+        return catastrophe_diagnostics(robot,specs,context,force_deep=True)
     except Exception as e:
         raise HTTPException(400,str(e))
 

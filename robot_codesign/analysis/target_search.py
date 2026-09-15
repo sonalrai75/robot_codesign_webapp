@@ -7,6 +7,7 @@ import numpy as np
 from robot_codesign.analysis.svd_design import analyze_design_space, secondary_metric
 from robot_codesign.paths import PLANNERS
 from robot_codesign.analysis import path_min_time_control
+from robot_codesign.analysis.catastrophe import diagnose_map_singularity
 
 PRIMARY_INDEX = {
     "H_min": 0,
@@ -177,6 +178,33 @@ def target_jacobian(robot, targets: list[TargetSpec], context: dict) -> np.ndarr
                 cache[t.metric] = _metric_log_gradient(robot, t.metric, context)
             rows.append(cache[t.metric])
     return np.vstack(rows) if rows else np.zeros((0, len(robot.design_vector())))
+
+
+
+
+def catastrophe_diagnostics(robot, targets: list[TargetSpec], context: dict, force_deep: bool = False) -> dict:
+    """Local Thom-style singularity diagnostics for the selected target map.
+
+    The target map is expressed in log-performance/log-design coordinates,
+    matching the evolving-SVD target search.  This is intentionally a
+    diagnostic layer: it does not promote a small singular value to a
+    catastrophe without higher-order evidence.
+    """
+    if not targets:
+        return {"level": "not_applicable", "message": "Select at least one performance target."}
+    J = target_jacobian(robot, targets, context)
+    x0 = robot.design_vector()
+    names = [t.metric for t in targets]
+
+    def evaluate(x):
+        r = robot.with_design_vector(np.asarray(x, float))
+        vals = target_metrics(r, targets, context)
+        y = np.asarray([float(vals[n]) for n in names], float)
+        if np.any(y <= 0):
+            raise ValueError("Catastrophe diagnostics require positive target metrics for log scaling")
+        return np.log(y)
+
+    return diagnose_map_singularity(J, evaluate, x0, names, force_deep=force_deep)
 
 
 def _secondary_gradient(robot, metric: str) -> np.ndarray:
