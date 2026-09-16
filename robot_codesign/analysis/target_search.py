@@ -332,6 +332,133 @@ def search_catastrophes(
         "caution":"A cusp claim requires following the fold locus and verifying nondegeneracy/transversality. Search scores only prioritize numerical experiments.",
     }
 
+
+def verify_fold_candidate(
+    robot, targets: list[TargetSpec], context: dict,
+    control_metrics: list[str], control_values: list[float],
+    *, solve_iterations: int = 15, step_limit: float = 0.12,
+    refinement_span: float = 0.15, refinement_points: int = 9,
+) -> dict:
+    """Numerically verify a corank-one fold candidate conservatively.
+
+    The routine first refines the candidate by varying the second control while
+    holding the first control and all remaining enabled targets fixed.  It then
+    checks rank loss/corank, quadratic nondegeneracy, output-control
+    transversality, derivative-step robustness, and a two-seed branch probe.
+    Design-bound and pseudo-arclength turning-point tests are reported as
+    inconclusive when the production model does not expose those structures.
+    """
+    if len(control_metrics) != 2 or len(control_values) != 2:
+        raise ValueError("Fold verification requires exactly two control metrics and values")
+    names=[t.metric for t in targets]
+    if any(m not in names for m in control_metrics):
+        raise ValueError("Fold verification controls must be enabled target metrics")
+    if refinement_points not in {5,7,9,11}:
+        raise ValueError("refinement_points must be 5, 7, 9, or 11")
+
+    base={t.metric:float(t.value) for t in targets}
+    base[control_metrics[0]]=float(control_values[0])
+    base[control_metrics[1]]=float(control_values[1])
+    factors=np.linspace(1.0-refinement_span,1.0+refinement_span,refinement_points)
+    refined=[]; warm=robot
+    for fac in factors:
+        specs=[]
+        for t in targets:
+            v=base[t.metric]
+            rel=t.relation
+            if t.metric in control_metrics:
+                rel="equal"
+            if t.metric==control_metrics[1]:
+                v=base[t.metric]*float(fac)
+            specs.append(TargetSpec(t.metric,rel,v,t.tolerance))
+        try:
+            solved=run_target_search(warm,specs,context,max_iterations=solve_iterations,
+                step_limit=step_limit,secondary_objectives=[],null_step_fraction=0.0,
+                safety_cap=max(30,solve_iterations))
+            cand=solved["final_robot"]
+            _,merit,feasible,_=_target_state(target_metrics(cand,specs,context),specs)
+            diag=catastrophe_diagnostics(cand,specs,context,force_deep=True)
+            refined.append({"factor":float(fac),"target_value":float(base[control_metrics[1]]*fac),
+                "feasible":bool(feasible),"target_merit":float(merit),"robot":cand,"targets":specs,"diag":diag})
+            if feasible: warm=cand
+        except Exception as exc:
+            refined.append({"factor":float(fac),"target_value":float(base[control_metrics[1]]*fac),"feasible":False,"error":str(exc)})
+    valid=[r for r in refined if r.get("feasible") and r.get("diag")]
+    if not valid:
+        return {"status":"inconclusive","classification":"Fold verification inconclusive","tests":[],
+                "message":"No feasible points were obtained during local singularity refinement."}
+    best=min(valid,key=lambda r:float(r["diag"].get("sigma_ratio",1.0)))
+    cand=best["robot"]; specs=best["targets"]
+    J=target_jacobian(cand,specs,context)
+    U,sv,VT=np.linalg.svd(J,full_matrices=False)
+    smax=float(sv[0]); smin=float(sv[-1]); ratio=smin/max(smax,1e-15)
+    second_ratio=float(sv[-2]/smax) if len(sv)>=2 else 1.0
+    u=U[:,-1]; v=VT[-1,:]
+    idx=names.index(control_metrics[1])
+    trans=float(abs(u[idx]))
+
+    # Recompute higher-order terms over several finite-difference scales.
+    robustness=[]
+    for h in (1e-3,2e-3,4e-3):
+        d=catastrophe_diagnostics(cand,specs,context,force_deep=True)
+        # catastrophe_diagnostics uses the production default derivative step;
+        # call the lower-level routine when a different h is required.
+        if h != 2e-3:
+            def ev(x):
+                rr=cand.with_design_vector(np.asarray(x,float)); vals=target_metrics(rr,specs,context)
+                return np.log(np.asarray([vals[n] for n in names],float))
+            d=diagnose_map_singularity(J,ev,cand.design_vector(),names,force_deep=True,derivative_step=h)
+        robustness.append({"step":h,"a2":float(d.get("projected_second_a2",0.0)),
+                           "a3":float(d.get("projected_third_a3",0.0))})
+    a2s=np.asarray([r["a2"] for r in robustness],float)
+    robust=bool(np.all(np.sign(a2s)==np.sign(a2s[0])) and np.ptp(a2s)/max(abs(np.mean(a2s)),1e-12)<0.35)
+    a2=float(best["diag"].get("projected_second_a2",0.0))
+
+    tests=[]
+    def add(name,status,value,criterion,note): tests.append({"name":name,"status":status,"value":value,"criterion":criterion,"note":note})
+    add("Singularity localization","PASS" if ratio<=1e-2 else "INCONCLUSIVE",
+        f"sigma_min/sigma_max={ratio:.3e}","<= 1e-2",
+        "Local refinement reached numerical rank loss." if ratio<=1e-2 else "Candidate strengthened but did not reach the verification threshold.")
+    add("Corank-one spectrum","PASS" if ratio<=1e-2 and second_ratio>=5e-2 else "INCONCLUSIVE",
+        f"smallest ratio={ratio:.3e}; next ratio={second_ratio:.3e}","one singular value collapses while the next remains separated","Full active singular spectrum checked.")
+    add("Quadratic nondegeneracy","PASS" if abs(a2)>=1e-3 else "FAIL",f"a2={a2:.4e}","|a2| >= 1e-3","A generic fold requires nonzero projected quadratic curvature.")
+    add("Control transversality","PASS" if trans>=0.05 else "INCONCLUSIVE",f"|u^T e_control|={trans:.4f}",">= 0.05","Tests whether the selected unfolding control cuts across the singular image locally.")
+    add("Derivative robustness","PASS" if robust else "INCONCLUSIVE",str(robustness),"a2 sign stable and spread < 35%","Repeated at three finite-difference scales.")
+
+    # Two-seed local branch probe at the refined target level.
+    branches=[]
+    for sign in (-1.0,1.0):
+        try:
+            seed=cand.with_design_vector(cand.design_vector()+sign*0.06*v)
+            sol=run_target_search(seed,specs,context,max_iterations=max(15,solve_iterations),step_limit=step_limit,
+                secondary_objectives=[],null_step_fraction=0.0,safety_cap=max(30,solve_iterations))
+            rr=sol["final_robot"]; _,mer,ok,_=_target_state(target_metrics(rr,specs,context),specs)
+            branches.append({"feasible":bool(ok),"merit":float(mer),"x":rr.design_vector(),"t1":list(map(float,rr.t1)),"t2":list(map(float,rr.t2))})
+        except Exception as exc: branches.append({"feasible":False,"error":str(exc)})
+    dist=None; branch_pass=False
+    if len(branches)==2 and all(b.get("feasible") for b in branches):
+        dist=float(np.linalg.norm(branches[0]["x"]-branches[1]["x"]))
+        branch_pass=dist>=0.02
+    add("Two-branch probe","PASS" if branch_pass else "INCONCLUSIVE",
+        "distance="+(f"{dist:.4f}" if dist is not None else "not resolved"),"two feasible distinct local designs","Opposite critical-direction seeds are solved back to the same target level.")
+    add("Active design bounds","INCONCLUSIVE","bounds not exposed by current robot model","no active bound causes rank loss","The production Planar2DOFRobot currently has no explicit section-variable bounds to test.")
+    add("Pseudo-arclength turning point","INCONCLUSIVE","not run","turning point on continued solution branch","Production catastrophe path does not yet expose pseudo-arclength continuation.")
+
+    required=[t for t in tests if t["name"] in {"Singularity localization","Corank-one spectrum","Quadratic nondegeneracy","Control transversality","Derivative robustness"}]
+    verified=all(t["status"]=="PASS" for t in required) and branch_pass
+    classification="Fold singularity numerically verified" if verified else "Fold candidate — verification incomplete"
+    return {"status":"verified" if verified else "candidate","classification":classification,
+        "controls":control_metrics,"refined_control_values":[float(base[control_metrics[0]]),float(best["target_value"])],
+        "sigma_values":list(map(float,sv)),"sigma_ratio":float(ratio),"condition":float(smax/smin) if smin>0 else None,
+        "a2":a2,"a3":best["diag"].get("projected_third_a3"),"transversality":trans,
+        "tests":tests,"robustness":robustness,
+        "refinement":[{"factor":r["factor"],"target_value":r["target_value"],"feasible":r.get("feasible",False),
+                       "sigma_ratio":(r.get("diag") or {}).get("sigma_ratio"),"sigma_min":(r.get("diag") or {}).get("sigma_min"),
+                       "condition":(r.get("diag") or {}).get("condition"),"error":r.get("error")} for r in refined],
+        "design":{"t1":list(map(float,cand.t1)),"t2":list(map(float,cand.t2))},
+        "branches":[{k:v for k,v in b.items() if k!="x"} for b in branches],
+        "message":"Verification is deliberately conservative. A Thom-catastrophe claim additionally requires an appropriate smooth potential/equilibrium interpretation; this endpoint verifies fold geometry of the selected design-to-performance map."}
+
 def _secondary_gradient(robot, metric: str) -> np.ndarray:
     """Gradient of a secondary metric in log-design coordinates.
 
