@@ -137,7 +137,7 @@ def capabilities():
 
 @app.get("/catastrophe-guide")
 def catastrophe_guide():
-    return FileResponse(STATIC_DIR / "catastrophe_guide.html")
+    return FileResponse(ROOT / "static" / "catastrophe_guide.html")
 
 @app.post("/api/v1/analyze")
 def analyze(req:AnalyzeInput):
