@@ -1,0 +1,83 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thom Catastrophes — Robot Co-Design Laboratory</title>
+<style>
+body{font-family:system-ui,Arial;margin:0;background:#f6f7f9;color:#17202a;line-height:1.55}
+.wrap{max-width:1100px;margin:auto;padding:22px}.card{background:#fff;border:1px solid #ddd;border-radius:10px;padding:18px;margin-bottom:16px}
+h1{margin-bottom:4px}h2{margin-top:4px}.muted{color:#667}.eq{font-family:Georgia,serif;text-align:center;font-size:18px;margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid #ddd;padding:9px;text-align:left;vertical-align:top}
+.status{font-weight:700}.implemented{color:#176b35}.partial{color:#8a5a00}.planned{color:#667}
+.note{background:#fff5da;border-radius:7px;padding:11px}.flow{background:#eef6ff;border:1px solid #b8d5f0;border-radius:8px;padding:12px;text-align:center;font-weight:650}
+.pill{display:inline-block;border:1px solid #bbb;border-radius:13px;padding:2px 8px;margin:2px;font-size:12px}
+@media(max-width:750px){.wrap{padding:12px}.tablewrap{overflow:auto}}
+</style></head><body><div class="wrap">
+<p><a href="/target-search">← Global Performance Target Search</a></p>
+<div class="card">
+<h1>Thom’s Seven Elementary Catastrophes</h1>
+<p class="muted">How the Robot Co-Design Laboratory uses SVD, higher-order directional analysis, and numerical continuation to screen and verify singular behavior in a design-to-performance map.</p>
+</div>
+
+<div class="card">
+<h2>Why catastrophe analysis appears in a robot design tool</h2>
+<p>The co-design problem maps a high-dimensional structural design <i>x</i> into selected performance quantities <i>F(x)</i>. The local Jacobian <i>J = ∂F/∂x</i> describes how small design changes affect those performances. Singular Value Decomposition (SVD) exposes directions in which that local map becomes weak or loses rank.</p>
+<div class="flow">Design x → Performance F(x) → Jacobian J → SVD → Critical subspace → Higher-order tests → Continuation / verification</div>
+<p>A small singular value is therefore a <b>screening signal</b>, not by itself proof of a catastrophe. The application follows the weak direction into higher-order geometry and, where implemented, performs additional numerical verification.</p>
+</div>
+
+<div class="card">
+<h2>The seven catastrophes and implementation status</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Catastrophe</th><th>Critical state dimension</th><th>Control parameters</th><th>Interpretation</th><th>Current app status</th></tr></thead>
+<tbody>
+<tr><td><b>Fold</b></td><td>1</td><td>1</td><td>A solution branch turns back; locally two solutions can merge and disappear.</td><td class="status implemented">Implemented + numerical verification suite</td></tr>
+<tr><td><b>Cusp</b></td><td>1</td><td>2</td><td>A fold becomes degenerate; two fold curves can meet in a cusp structure.</td><td class="status partial">Candidate screening implemented</td></tr>
+<tr><td><b>Swallowtail</b></td><td>1</td><td>3</td><td>A still higher degeneracy in the one-critical-direction hierarchy.</td><td class="status planned">Planned</td></tr>
+<tr><td><b>Butterfly</b></td><td>1</td><td>4</td><td>Higher-order one-state degeneracy requiring four controls for a generic unfolding.</td><td class="status planned">Planned</td></tr>
+<tr><td><b>Hyperbolic umbilic</b></td><td>2</td><td>3</td><td>Interaction of two critical state directions with a characteristic cubic structure.</td><td class="status planned">Planned</td></tr>
+<tr><td><b>Elliptic umbilic</b></td><td>2</td><td>3</td><td>A different cubic interaction of two simultaneously critical directions.</td><td class="status planned">Planned</td></tr>
+<tr><td><b>Parabolic umbilic</b></td><td>2</td><td>4</td><td>A higher-codimension two-direction degeneracy.</td><td class="status planned">Planned</td></tr>
+</tbody></table></div>
+<p class="note"><b>Status matters:</b> “candidate” means the numerical screen has found geometry worth investigating. It does not mean that the corresponding Thom catastrophe has already been established.</p>
+</div>
+
+<div class="card">
+<h2>Corank-one route: fold to butterfly</h2>
+<p>If one active singular value becomes small while the others remain separated, the application identifies a one-dimensional critical direction. Let <i>v</i> and <i>u</i> denote the associated right and left critical singular vectors. Higher-order derivatives are projected onto that direction.</p>
+<div class="eq">a₂ = uᵀD²F[v,v], &nbsp;&nbsp; a₃ = uᵀD³F[v,v,v], &nbsp;&nbsp; …</div>
+<p>The hierarchy is conceptually:</p>
+<div class="flow">Fold → Cusp → Swallowtail → Butterfly</div>
+<p>A generic fold has a rank loss with a nonzero quadratic term. A cusp requires the quadratic fold term to degenerate while the next appropriate term remains nonzero, together with the required unfolding/transversality conditions. Swallowtail and butterfly require successively higher degeneracy and additional independent controls.</p>
+</div>
+
+<div class="card">
+<h2>Corank-two route: the umbilics</h2>
+<p>The umbilic catastrophes are different. They require <b>two interacting critical directions</b>. SVD provides a natural screen: if the two smallest active singular values simultaneously approach zero, the critical subspace becomes two-dimensional.</p>
+<div class="eq">V<sub>c</sub> = [v<sub>m−1</sub> &nbsp; v<sub>m</sub>], &nbsp;&nbsp; Δx = V<sub>c</sub>[z₁ z₂]ᵀ</div>
+<p>The nonlinear map must then be projected into this two-dimensional critical subspace. Its quadratic/cubic forms and unfolding geometry are used to distinguish possible hyperbolic, elliptic, or parabolic umbilic behavior. This analysis is <b>not yet implemented</b> in the current application.</p>
+</div>
+
+<div class="card">
+<h2>What the current fold verification tests</h2>
+<p>The fold workflow goes beyond merely ranking a small singular value. The verification suite is designed to examine:</p>
+<p><span class="pill">singularity localization</span><span class="pill">corank one</span><span class="pill">a₂ ≠ 0</span><span class="pill">control transversality</span><span class="pill">derivative robustness</span><span class="pill">two-branch probe</span><span class="pill">design-bound effects</span><span class="pill">continuation</span></p>
+<p>The interface should retain <b>Fold candidate</b> when evidence is incomplete. A stronger label such as <b>Fold singularity numerically verified</b> is reserved for cases that pass the implemented numerical verification requirements.</p>
+</div>
+
+<div class="card">
+<h2>Evidence ladder</h2>
+<div class="flow">Screened → Candidate → Higher-order verified → Continuation verified → Numerically verified singularity → Thom classification supported</div>
+<p>This ladder prevents a numerical optimizer, an active design bound, poor scaling, or an infeasible target boundary from being mistaken for intrinsic catastrophe geometry.</p>
+</div>
+
+<div class="card">
+<h2>Important mathematical distinction</h2>
+<p>This application begins with a <b>design-to-performance map</b>, not automatically with a classical equilibrium potential. SVD rank loss and higher-order tests can establish singularities of that map. Describing a result specifically as a <b>Thom catastrophe</b> requires the assumptions appropriate to the mathematical object being classified, including smoothness, the required degeneracy/nondegeneracy conditions, and a sufficiently independent unfolding by the control parameters. Where a potential or equilibrium formulation is required for a particular interpretation, that must also be justified rather than assumed.</p>
+<p class="note">Accordingly, the application uses conservative labels such as <b>fold candidate</b> during screening and separates numerical singularity verification from the stronger catastrophe-theory interpretation.</p>
+</div>
+
+<div class="card">
+<h2>Development roadmap</h2>
+<p><b>Current:</b> fold screening and verification; cusp candidate screening. <b>Next:</b> complete fold continuation/bound diagnostics, strengthen cusp verification, then add higher-order corank-one analysis for swallowtail and butterfly. <b>Later:</b> monitor the full active singular spectrum for simultaneous two-direction rank loss and implement the projected two-dimensional analysis needed for the three umbilics.</p>
+</div>
+<p><a href="/target-search">← Return to Global Performance Target Search</a></p>
+</div></body></html>

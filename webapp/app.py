@@ -134,6 +134,11 @@ def capabilities():
             "catastrophe_analysis":["near-rank-loss screen","higher-order fold/cusp diagnostics","fold verification suite"],
             "architecture":"DOF-agnostic model/path/metric interfaces; evolving-SVD target/null-space search with conservative manifold singularity diagnostics"}
 
+
+@app.get("/catastrophe-guide")
+def catastrophe_guide():
+    return FileResponse(STATIC_DIR / "catastrophe_guide.html")
+
 @app.post("/api/v1/analyze")
 def analyze(req:AnalyzeInput):
     try:
