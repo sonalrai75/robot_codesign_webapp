@@ -459,6 +459,130 @@ def verify_fold_candidate(
         "branches":[{k:v for k,v in b.items() if k!="x"} for b in branches],
         "message":"Verification is deliberately conservative. A Thom-catastrophe claim additionally requires an appropriate smooth potential/equilibrium interpretation; this endpoint verifies fold geometry of the selected design-to-performance map."}
 
+
+def continue_fold_candidate(
+    robot, targets: list[TargetSpec], context: dict,
+    control_metrics: list[str], control_values: list[float],
+    *, steps_each_side: int = 6, arclength_step: float = 0.025,
+    corrector_iterations: int = 5, section_min: float | None = None,
+    section_max: float | None = None,
+) -> dict:
+    """Follow a selected fold candidate with a minimum-norm pseudo-arclength path.
+
+    The augmented unknown is y=[log(section variables), eta], where eta is the
+    log multiplier of the second selected control target.  Because the design
+    problem is redundant, the augmented level set is not intrinsically 1-D.
+    We therefore select a reproducible 1-D slice: the initial tangent is the
+    projection of the control direction into null([J,-e]), subsequent tangents
+    are the closest null-space projections of the previous tangent, and Newton
+    correctors use minimum-norm updates plus the pseudo-arclength hyperplane.
+    This is a numerical continuation slice, not a claim of a globally unique branch.
+    """
+    if len(control_metrics)!=2 or len(control_values)!=2:
+        raise ValueError("Fold continuation requires exactly two controls and values")
+    if not (2 <= steps_each_side <= 12): raise ValueError("steps_each_side must be 2..12")
+    if not (0.002 <= arclength_step <= 0.10): raise ValueError("arclength_step must be 0.002..0.10")
+    if not (2 <= corrector_iterations <= 8): raise ValueError("corrector_iterations must be 2..8")
+    if section_min is not None and section_min <= 0: raise ValueError("section_min must be positive")
+    if section_max is not None and section_max <= 0: raise ValueError("section_max must be positive")
+    if section_min is not None and section_max is not None and section_min >= section_max:
+        raise ValueError("section_min must be less than section_max")
+
+    names=[t.metric for t in targets]
+    if any(m not in names for m in control_metrics):
+        raise ValueError("Continuation controls must be enabled targets")
+    cidx=names.index(control_metrics[1])
+    base={t.metric:float(t.value) for t in targets}
+    base[control_metrics[0]]=float(control_values[0]); base[control_metrics[1]]=float(control_values[1])
+    # Both controls are level-set coordinates during continuation.
+    def specs_for_eta(eta):
+        out=[]
+        for t in targets:
+            v=base[t.metric]; rel=t.relation
+            if t.metric in control_metrics: rel='equal'
+            if t.metric==control_metrics[1]: v=base[t.metric]*float(np.exp(eta))
+            out.append(TargetSpec(t.metric,rel,v,t.tolerance))
+        return out
+    def residual(x,eta):
+        rr=robot.with_design_vector(x); vals=target_metrics(rr,specs_for_eta(eta),context)
+        actual=np.asarray([float(vals[n]) for n in names],float)
+        targ=np.asarray([float(next(t.value for t in specs_for_eta(eta) if t.metric==n)) for n in names],float)
+        return np.log(actual)-np.log(targ)
+    def augmented_jac(x,eta):
+        rr=robot.with_design_vector(x); J=target_jacobian(rr,specs_for_eta(eta),context)
+        col=np.zeros((len(names),1)); col[cidx,0]=-1.0
+        return np.hstack([J,col])
+    def tangent(A, preferred):
+        P=np.eye(A.shape[1])-np.linalg.pinv(A)@A
+        q=P@preferred
+        nq=np.linalg.norm(q)
+        if nq<1e-10: return None
+        return q/nq
+    def point_payload(y,tan=None,converged=True,iters=0):
+        x=y[:-1]; eta=float(y[-1]); rr=robot.with_design_vector(x); sp=specs_for_eta(eta)
+        J=target_jacobian(rr,sp,context); sv=np.linalg.svd(J,compute_uv=False)
+        vals=target_metrics(rr,sp,context); r=residual(x,eta)
+        thick=np.r_[np.asarray(rr.t1,float),np.asarray(rr.t2,float)]
+        active=[]
+        if section_min is not None:
+            active += [f"t{i+1}:lower" for i,v in enumerate(thick) if v <= section_min*1.01]
+        if section_max is not None:
+            active += [f"t{i+1}:upper" for i,v in enumerate(thick) if v >= section_max*.99]
+        return {"eta":eta,"control_value":float(base[control_metrics[1]]*np.exp(eta)),
+            "sigma_min":float(sv[-1]),"sigma_ratio":float(sv[-1]/max(sv[0],1e-15)),
+            "condition":float(sv[0]/sv[-1]) if sv[-1]>0 else None,
+            "residual_inf":float(np.max(np.abs(r))),"converged":bool(converged),"corrector_iterations":iters,
+            "tangent_control":None if tan is None else float(tan[-1]),
+            "t1":list(map(float,rr.t1)),"t2":list(map(float,rr.t2)),
+            "section_min_actual":float(np.min(thick)),"section_max_actual":float(np.max(thick)),
+            "active_bounds":active,"performance":{n:float(vals[n]) for n in names}}
+
+    y0=np.r_[robot.design_vector(),0.0]
+    A0=augmented_jac(y0[:-1],y0[-1]); pref=np.zeros_like(y0); pref[-1]=1.0
+    t0=tangent(A0,pref)
+    if t0 is None: raise ValueError("Could not construct an initial continuation tangent")
+
+    def march(sign):
+        y=y0.copy(); t=sign*t0.copy(); out=[]
+        for _ in range(steps_each_side):
+            yp=y+arclength_step*t; yn=yp.copy(); conv=False; nit=0
+            for nit in range(1,corrector_iterations+1):
+                rr=residual(yn[:-1],yn[-1]); arc=float(np.dot(t,yn-yp)); g=np.r_[rr,arc]
+                if np.max(np.abs(g))<2e-5: conv=True; break
+                A=augmented_jac(yn[:-1],yn[-1]); B=np.vstack([A,t])
+                dy=-np.linalg.pinv(B)@g
+                # keep a failed Newton step from exploding the positive section model
+                nd=np.linalg.norm(dy)
+                if nd>.20: dy*=.20/nd
+                yn+=dy
+            A=augmented_jac(yn[:-1],yn[-1]); tn=tangent(A,t)
+            if tn is None: break
+            if np.dot(tn,t)<0: tn=-tn
+            out.append(point_payload(yn,tn,conv,nit)); y=yn; t=tn
+            if not conv: break
+        return out
+    neg=march(-1.0); pos=march(1.0)
+    center=point_payload(y0,t0,True,0)
+    trace=list(reversed(neg))+[center]+pos
+    # Turning point: tangent component of the continued control changes sign.
+    turns=[]
+    for i in range(1,len(trace)):
+        a=trace[i-1].get('tangent_control'); b=trace[i].get('tangent_control')
+        if a is not None and b is not None and a*b<0:
+            turns.append(i)
+    best=min(trace,key=lambda q:q['sigma_ratio'])
+    bounds_configured=section_min is not None or section_max is not None
+    any_active=any(q['active_bounds'] for q in trace)
+    return {"status":"completed","controls":control_metrics,"trace":trace,"turning_indices":turns,
+        "turning_point_detected":bool(turns),"best":best,
+        "bounds":{"configured":bounds_configured,"section_min":section_min,"section_max":section_max,
+                  "active_anywhere":any_active,
+                  "interpretation":("No configured finite section bound became active on the computed trace." if bounds_configured and not any_active else
+                                    "At least one configured section bound became active; boundary-induced singularity must be considered." if any_active else
+                                    "No finite section bounds were supplied. The model enforces positivity through log design variables, so a finite-bound exclusion test remains unavailable.")},
+        "message":"Pseudo-arclength continuation completed on a reproducible one-dimensional slice of the redundant level-set manifold. A turning point plus isolated rank loss strengthens fold evidence; absence of a turning point on this finite trace is inconclusive."}
+
+
 def _secondary_gradient(robot, metric: str) -> np.ndarray:
     """Gradient of a secondary metric in log-design coordinates.
 

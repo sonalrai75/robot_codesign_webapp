@@ -10,10 +10,10 @@ from robot_codesign.models import Planar2DOFRobot
 from robot_codesign.paths import PLANNERS
 from robot_codesign.analysis import metric_length, euclidean_joint_length, path_min_time_control
 from robot_codesign.analysis.svd_design import analyze_design_space, secondary_direction, secondary_metric, corrected_null_move
-from robot_codesign.analysis.target_search import TargetSpec, SecondarySpec, run_target_search, catastrophe_diagnostics, search_catastrophes, verify_fold_candidate
+from robot_codesign.analysis.target_search import TargetSpec, SecondarySpec, run_target_search, catastrophe_diagnostics, search_catastrophes, verify_fold_candidate, continue_fold_candidate
 
 ROOT=Path(__file__).resolve().parent
-app=FastAPI(title="Robot Co-Design Laboratory",version="0.16.0")
+app=FastAPI(title="Robot Co-Design Laboratory",version="0.17.0")
 app.mount("/static",StaticFiles(directory=ROOT/"static"),name="static")
 
 class RobotInput(BaseModel):
@@ -69,6 +69,15 @@ class FoldVerificationInput(TargetSearchInput):
     solve_iterations: int = 15
     refinement_span: float = 0.15
     refinement_points: int = 9
+
+class FoldContinuationInput(TargetSearchInput):
+    control_metrics: list[str] = Field(default_factory=list)
+    control_values: list[float] = Field(default_factory=list)
+    steps_each_side: int = 6
+    arclength_step: float = 0.025
+    corrector_iterations: int = 5
+    section_min: float | None = None
+    section_max: float | None = None
 
 class DesignMoveInput(AnalyzeInput):
     # Optimistic-concurrency metadata.  The browser owns a stable client_id and
@@ -127,17 +136,15 @@ def index(): return FileResponse(ROOT/"static"/"index.html")
 @app.get("/target-search")
 def target_search_page(): return FileResponse(ROOT/"static"/"target_search.html")
 
+@app.get("/catastrophe-guide")
+def catastrophe_guide(): return FileResponse(ROOT/"static"/"catastrophe_guide.html")
+
 @app.get("/api/v1/capabilities")
 def capabilities():
     return {"robot_models":["planar_2dof"],"path_types":list(PLANNERS),"primary_metrics":["H_min","H_max","f1_Hz","f2_Hz"],
             "secondary_metrics":["mass","smoothness","peak_width","rms_width","maneuverability"],
             "catastrophe_analysis":["near-rank-loss screen","higher-order fold/cusp diagnostics","fold verification suite"],
             "architecture":"DOF-agnostic model/path/metric interfaces; evolving-SVD target/null-space search with conservative manifold singularity diagnostics"}
-
-
-@app.get("/catastrophe-guide")
-def catastrophe_guide():
-    return FileResponse(ROOT / "static" / "catastrophe_guide.html")
 
 @app.post("/api/v1/analyze")
 def analyze(req:AnalyzeInput):
@@ -332,6 +339,25 @@ def fold_verification(req:FoldVerificationInput):
         return verify_fold_candidate(robot,specs,context,req.control_metrics,req.control_values,
             solve_iterations=int(req.solve_iterations),step_limit=float(req.step_limit),
             refinement_span=float(req.refinement_span),refinement_points=int(req.refinement_points))
+    except Exception as e:
+        raise HTTPException(400,str(e))
+
+
+@app.post("/api/v1/fold-continuation")
+def fold_continuation(req:FoldContinuationInput):
+    """Pseudo-arclength continuation from a selected fold candidate."""
+    try:
+        robot=build_robot(req.robot)
+        allowed={"H_min","H_max","f1_Hz","f2_Hz","travel_time_s","mass_kg"}
+        specs=[]
+        for t in req.targets:
+            if t.metric not in allowed: raise ValueError(f"Unsupported target metric: {t.metric}")
+            if t.value <= 0: raise ValueError(f"Target {t.metric} must be positive")
+            specs.append(TargetSpec(t.metric,t.relation,float(t.value),float(t.tolerance)))
+        context={"start_xy":req.start_xy,"end_xy":req.end_xy,"path_type":req.path_type,"branch":req.branch,"torque_limits":req.torque_limits,"timing_nodes":27}
+        return continue_fold_candidate(robot,specs,context,req.control_metrics,req.control_values,
+            steps_each_side=int(req.steps_each_side),arclength_step=float(req.arclength_step),
+            corrector_iterations=int(req.corrector_iterations),section_min=req.section_min,section_max=req.section_max)
     except Exception as e:
         raise HTTPException(400,str(e))
 
