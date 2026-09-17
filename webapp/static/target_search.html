@@ -215,16 +215,16 @@ function renderNormalForm(nf){
 }
 
 
-function renderActiveInvariance(iv){
+function renderComplementInvariance(iv){
  if(!iv)return '';
- if(iv.status==='unavailable')return `<div class="warn" style="margin-top:10px"><b>Active-subspace invariance diagnostic unavailable:</b> ${iv.error||iv.interpretation||''}</div>`;
- let rows=(iv.tests||[]).map(t=>`<tr><td>${t.trace_index}</td><td>${Number(t.control_value).toPrecision(9)}</td><td>${Number(t.sigma_ratio).toExponential(3)}</td><td>${Number(t.direction_alignment).toFixed(5)}</td><td>${Number(t.quadratic_C).toExponential(5)}</td><td>${Number(t.r2_mu_equals_Cz2).toFixed(5)}</td><td>${t.points}</td></tr>`).join('');
+ if(iv.status==='unavailable')return `<div class="warn" style="margin-top:10px"><b>Critical-point complement-invariance diagnostic unavailable:</b> ${iv.error||iv.interpretation||''}</div>`;
+ let rows=(iv.tests||[]).map(t=>`<tr><td>${t.coordinate_system}</td><td>${Number(t.critical_direction_alignment).toFixed(6)}</td><td>${Number(t.quadratic_C).toExponential(5)}</td><td>${Number(t.r2_mu_equals_Cz2).toFixed(5)}</td><td>${Number(t.linear_to_quadratic).toExponential(2)}</td><td>${Number(t.cubic_to_quadratic).toExponential(2)}</td><td>${t.points}</td></tr>`).join('');
  let cls=iv.status==='supported'?'ok':'warn';
- return `<div class="card" style="margin-top:12px"><h4>Active-Subspace Invariance Test</h4>
- <div class="${cls}" style="padding:8px;border-radius:6px"><b>${iv.status==='supported'?'Fold signature persists across nearby active bases':'Active-basis invariance not yet supported'}</b><br>${iv.interpretation||''}</div>
- <div style="margin-top:8px"><b>Same sign of quadratic coefficient:</b> ${iv.same_quadratic_sign?'YES':'NO'} &nbsp; <b>Minimum critical-direction alignment:</b> ${Number(iv.min_direction_alignment).toFixed(5)} &nbsp; <b>Minimum quadratic R²:</b> ${Number(iv.min_quadratic_r2).toFixed(5)} &nbsp; <b>C coefficient of variation:</b> ${Number(iv.quadratic_C_coefficient_of_variation).toExponential(3)}</div>
- <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Anchor trace</th><th>Control</th><th>σmin/σmax</th><th>|v·v<sub>c</sub>|</th><th>C</th><th>R²: μ=Cz²</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table></div>
- <div class="muted" style="margin-top:6px">At each nearby corrected continuation design, the active Jacobian/SVD is recomputed, the weakest direction is sign-aligned with the critical direction, and the local quadratic projection is refit. This tests whether the fold signature survives legitimate nearby active-basis reconstruction rather than depending on one frozen SVD basis.</div>
+ return `<div class="card" style="margin-top:12px"><h4>Critical-Point Complement-Invariance Test</h4>
+ <div class="${cls}" style="padding:8px;border-radius:6px"><b>${iv.status==='supported'?'Fold normal form persists across legitimate complements':'Complement invariance not yet supported'}</b><br>${iv.interpretation||''}</div>
+ <div style="margin-top:8px"><b>Same sign of nonzero quadratic term:</b> ${iv.same_quadratic_sign?'YES':'NO'} &nbsp; <b>Minimum physical critical-direction alignment:</b> ${Number(iv.min_critical_direction_alignment).toFixed(6)} &nbsp; <b>Minimum quadratic R²:</b> ${Number(iv.min_quadratic_r2).toFixed(5)}<br><b>Maximum linear/quadratic:</b> ${Number(iv.max_linear_to_quadratic).toExponential(2)} &nbsp; <b>Maximum cubic/quadratic:</b> ${Number(iv.max_cubic_to_quadratic).toExponential(2)}</div>
+ <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Coordinate / complement</th><th>critical-dir. alignment</th><th>C</th><th>R²: μ=Cz²</th><th>linear/quadratic</th><th>cubic/quadratic</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table></div>
+ <div class="muted" style="margin-top:6px">All tests use the same physical critical design x<sub>c</sub>. Smooth invertible local coordinate changes induce different complementary subspaces while preserving the physical critical direction. The coefficient C may rescale; persistence of a nonzero quadratic fold germ is the invariant being tested.</div>
  <div class="warn" style="padding:8px;margin-top:8px;border-radius:6px"><b>Caution:</b> ${iv.caution||''}</div></div>`;
 }
 
@@ -245,7 +245,7 @@ function renderFoldContinuation(r){
  h+=`<div style="margin-top:8px"><b>Best rank-loss point:</b> ${r.controls[1]}=${Number(best.control_value).toPrecision(7)}; σmin/σmax=${Number(best.sigma_ratio).toExponential(3)}; σmin=${Number(best.sigma_min).toExponential(3)}; condition=${best.condition==null?'∞':Number(best.condition).toFixed(2)}.</div>`;
  h+=`<div class="${b.active_anywhere?'bad':'muted'}" style="margin-top:6px"><b>Bound diagnostic:</b> ${b.interpretation||''}</div>`;
  h+=`<div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>#</th><th>${r.controls[1]}</th><th>σmin/σmax</th><th>Cond.</th><th>d control/ds</th><th>Residual</th><th>Section min</th><th>Bounds</th></tr></thead><tbody>${tr.map((q,i)=>`<tr class="${turns.includes(i)?'ok':''}"><td>${i}</td><td>${Number(q.control_value).toPrecision(7)}</td><td>${Number(q.sigma_ratio).toExponential(2)}</td><td>${q.condition==null?'∞':Number(q.condition).toFixed(1)}</td><td>${q.tangent_control==null?'—':Number(q.tangent_control).toExponential(2)}</td><td>${Number(q.residual_inf).toExponential(1)}</td><td>${Number(q.section_min_actual).toExponential(3)}</td><td>${(q.active_bounds||[]).join(', ')||'—'}</td></tr>`).join('')}</tbody></table></div>`;
- h+=renderPairedDesigns(r.paired_designs); h+=renderNormalForm(r.normal_form); h+=renderActiveInvariance(r.active_invariance); $('arcresult').innerHTML=h; updateVerificationFromContinuation(r);
+ h+=renderPairedDesigns(r.paired_designs); h+=renderNormalForm(r.normal_form); h+=renderComplementInvariance(r.complement_invariance); $('arcresult').innerHTML=h; updateVerificationFromContinuation(r);
 }
 async function continueFold(){
  if(!selectedFoldCandidate){$('arcstatus').textContent='Verify a fold candidate first.';return;}

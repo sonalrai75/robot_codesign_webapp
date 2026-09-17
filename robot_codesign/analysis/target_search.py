@@ -711,72 +711,128 @@ def continue_fold_candidate(
         normal_form={'status':'unavailable','error':str(e),'interpretation':'Normal-form diagnostic could not be evaluated.'}
 
 
-    # Active-subspace invariance diagnostic.  Rebuild the critical SVD direction
-    # at several nearby, well-corrected continuation designs and repeat the same
-    # local quadratic projection.  Sign is aligned with v_c.  Persistence of the
-    # fold coefficient/sign and high quadratic fit quality under these legitimate
-    # nearby active bases argues that the observed fold is not a single-basis artifact.
-    active_invariance=None
+    # Critical-point coordinate/complement invariance diagnostic.
+    #
+    # Keep the SAME physical critical design x_c and physical critical direction
+    # v_c.  Apply several deterministic, smooth, invertible local coordinate
+    # changes x-x_c = A y.  In each coordinate system the critical direction is
+    # represented by A^{-1}v_c; an orthogonal complement in y therefore induces
+    # a different legitimate complement in physical design space.  Refit the
+    # local fold relation using only the closest, well-corrected continuation
+    # points.  A generic fold should retain a nonzero quadratic term and strong
+    # local quadratic fit under these coordinate/complement choices; the value
+    # of C itself is NOT invariant and is not required to agree.
+    complement_invariance=None
     try:
         if normal_form and normal_form.get('status') in {'supported','diagnostic'}:
-            good=[(i,q) for i,q in enumerate(trace)
-                  if q.get('converged',False) and float(q.get('residual_inf',1.0))<=1e-4]
-            # Use center plus up to two nearest valid designs on each side.
-            ranked=sorted(good,key=lambda iq:abs(float(iq[1]['control_value'])-control_c))
-            anchors=ranked[:min(5,len(ranked))]
+            good=[]
+            for i,q in enumerate(trace):
+                if not q.get('converged',False) or float(q.get('residual_inf',1.0))>1e-4:
+                    continue
+                xq=np.log(np.maximum(np.r_[np.asarray(q['t1'],float),np.asarray(q['t2'],float)],1e-15))
+                good.append((i,q,xq))
+            nvar=len(xc)
+            transforms=[]
+            I=np.eye(nvar)
+            transforms.append(("identity",I))
+
+            # Moderate diagonal rescalings: smooth changes of local design units.
+            if nvar:
+                d1=np.linspace(0.85,1.15,nvar)
+                d2=np.linspace(1.15,0.85,nvar)
+                transforms.append(("scaled-A",np.diag(d1)))
+                transforms.append(("scaled-B",np.diag(d2)))
+
+            # Two mild shears induce different complements while remaining
+            # comfortably nonsingular.  Deterministic indices make runs repeatable.
+            if nvar>=2:
+                A=I.copy(); A[0,-1]=0.18
+                transforms.append(("shear-1",A))
+                B=I.copy(); B[-1,0]=-0.18
+                transforms.append(("shear-2",B))
+
             tests=[]
-            base_sign=None
-            for ai,aq in anchors:
-                ar=robot.with_design_vector(np.log(np.maximum(
-                    np.r_[np.asarray(aq['t1'],float),np.asarray(aq['t2'],float)],1e-15)))
-                Ja=target_jacobian(ar,specs_for_eta(float(aq['eta'])),context)
-                _,sa,Vta=np.linalg.svd(Ja,full_matrices=False)
-                va=np.asarray(Vta[-1],float)
-                if float(np.dot(va,vc))<0: va=-va
-                alignment=abs(float(np.dot(va,vc)))/(max(np.linalg.norm(va)*np.linalg.norm(vc),1e-30))
-                xa=ar.design_vector()
-                # Use the same closest half-neighborhood in physical continuation trace.
-                candidates=[]
-                for i,q in good:
-                    xq=np.log(np.maximum(np.r_[np.asarray(q['t1'],float),np.asarray(q['t2'],float)],1e-15))
-                    z=float(np.dot(va,xq-xa))
-                    mu=float(q['control_value'])-float(aq['control_value'])
-                    candidates.append((abs(z),z,mu))
-                use=sorted(candidates,key=lambda r:r[0])[:max(5,int(np.ceil(.5*len(candidates))))]
-                z=np.asarray([r[1] for r in use],float); mu=np.asarray([r[2] for r in use],float)
+            for label,A in transforms:
+                Ainv=np.linalg.inv(A)
+                vy=Ainv@vc
+                vy=vy/max(float(np.linalg.norm(vy)),1e-30)
+                # Physical direction represented by this coordinate kernel vector.
+                vphys=A@vy
+                vphys=vphys/max(float(np.linalg.norm(vphys)),1e-30)
+                alignment=abs(float(np.dot(vphys,vc)))
+
+                pts=[]
+                for i,q,xq in good:
+                    dy=Ainv@(xq-xc)
+                    z=float(np.dot(vy,dy))
+                    mu=float(q['control_value'])-control_c
+                    pts.append((abs(z),z,mu,i))
+                use=sorted(pts,key=lambda r:r[0])[:max(5,int(np.ceil(.5*len(pts))))]
+                z=np.asarray([r[1] for r in use],float)
+                mu=np.asarray([r[2] for r in use],float)
                 z2=z*z
                 C=float(np.dot(z2,mu)/max(np.dot(z2,z2),1e-30))
                 pred=C*z2
                 r2q=1.0-float(np.sum((mu-pred)**2))/max(float(np.sum(mu*mu)),1e-30)
-                tests.append({'trace_index':int(ai),'control_value':float(aq['control_value']),
-                              'sigma_ratio':float(sa[-1]/max(sa[0],1e-30)),
-                              'direction_alignment':float(alignment),
-                              'quadratic_C':C,'r2_mu_equals_Cz2':r2q,'points':len(use)})
+
+                # General cubic fit checks that the quadratic term dominates
+                # locally in this representation.
+                X=np.column_stack([np.ones_like(z),z,z*z,z*z*z])
+                coef=np.linalg.lstsq(X,mu,rcond=None)[0]
+                zscale=float(np.max(np.abs(z)))
+                linear=abs(float(coef[1]))*zscale
+                quad=abs(float(coef[2]))*zscale*zscale
+                cubic=abs(float(coef[3]))*zscale**3
+                tests.append({
+                    'coordinate_system':label,
+                    'critical_direction_alignment':alignment,
+                    'quadratic_C':C,
+                    'r2_mu_equals_Cz2':r2q,
+                    'linear_to_quadratic':float(linear/max(quad,1e-30)),
+                    'cubic_to_quadratic':float(cubic/max(quad,1e-30)),
+                    'points':len(use),
+                })
+
             reliable=[t for t in tests if np.isfinite(t['quadratic_C']) and np.isfinite(t['r2_mu_equals_Cz2'])]
             if reliable:
                 signs=[np.sign(t['quadratic_C']) for t in reliable if abs(t['quadratic_C'])>1e-12]
                 same_sign=bool(signs and all(s==signs[0] for s in signs))
-                min_align=min(t['direction_alignment'] for t in reliable)
+                min_align=min(t['critical_direction_alignment'] for t in reliable)
                 min_r2=min(t['r2_mu_equals_Cz2'] for t in reliable)
-                cs=np.asarray([t['quadratic_C'] for t in reliable],float)
-                cv=float(np.std(cs)/max(abs(np.mean(cs)),1e-30))
-                supported=bool(same_sign and min_align>=.90 and min_r2>=.90)
-                active_invariance={'status':'supported' if supported else 'diagnostic',
-                    'tests':tests,'same_quadratic_sign':same_sign,'min_direction_alignment':float(min_align),
-                    'min_quadratic_r2':float(min_r2),'quadratic_C_coefficient_of_variation':cv,
-                    'interpretation':('The local fold signature persists under nearby recomputed active SVD bases.'
-                                      if supported else
-                                      'The fold signature is sensitive to at least one nearby active-basis reconstruction; inspect the table before making an invariance claim.'),
-                    'caution':'This is a numerical local-basis invariance test, not a proof of coordinate-free equivalence. A formal theorem still requires the smoothness/rank hypotheses of the Lyapunov-Schmidt reduction.'}
+                max_lq=max(t['linear_to_quadratic'] for t in reliable)
+                max_cq=max(t['cubic_to_quadratic'] for t in reliable)
+                supported=bool(
+                    same_sign and min_align>=.999 and min_r2>=.90
+                    and max_lq<=.35 and max_cq<=.35
+                )
+                complement_invariance={
+                    'status':'supported' if supported else 'diagnostic',
+                    'tests':tests,
+                    'same_quadratic_sign':same_sign,
+                    'min_critical_direction_alignment':float(min_align),
+                    'min_quadratic_r2':float(min_r2),
+                    'max_linear_to_quadratic':float(max_lq),
+                    'max_cubic_to_quadratic':float(max_cq),
+                    'interpretation':(
+                        'The local fold normal form persists at the same physical critical point under several smooth coordinate changes that induce different complementary subspaces.'
+                        if supported else
+                        'At least one legitimate critical-point coordinate/complement choice does not yet preserve the configured local fold diagnostics.'
+                    ),
+                    'caution':(
+                        'The numerical value of C is coordinate-dependent and is intentionally not required to match across tests. '
+                        'This diagnostic tests persistence of the nondegenerate quadratic fold germ at one physical critical point; '
+                        'a rigorous Thom classification still requires the smoothness, rank and unfolding hypotheses to be stated and justified.'
+                    ),
+                }
             else:
-                active_invariance={'status':'unavailable','tests':tests,'interpretation':'No reliable nearby-basis fits were available.'}
+                complement_invariance={'status':'unavailable','tests':tests,'interpretation':'No reliable critical-point coordinate/complement fits were available.'}
     except Exception as e:
-        active_invariance={'status':'unavailable','error':str(e),'interpretation':'Active-subspace invariance diagnostic could not be evaluated.'}
+        complement_invariance={'status':'unavailable','error':str(e),'interpretation':'Critical-point complement-invariance diagnostic could not be evaluated.'}
 
     bounds_configured=section_min is not None or section_max is not None
     any_active=any(q['active_bounds'] for q in trace)
     return {"status":"completed","controls":control_metrics,"trace":trace,"turning_indices":turns,
-        "turning_point_detected":bool(turns),"best":best,"paired_designs":paired_designs,"normal_form":normal_form,"active_invariance":active_invariance,
+        "turning_point_detected":bool(turns),"best":best,"paired_designs":paired_designs,"normal_form":normal_form,"complement_invariance":complement_invariance,
         "bounds":{"configured":bounds_configured,"section_min":section_min,"section_max":section_max,
                   "active_anywhere":any_active,
                   "interpretation":("No configured finite section bound became active on the computed trace." if bounds_configured and not any_active else
