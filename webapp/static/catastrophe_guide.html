@@ -169,8 +169,56 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 </section>
 
 <section class="card">
-  <h2>Local spectral-smoothness audit</h2>
-  <p>The continuation page now evaluates the remaining model-specific smoothness issue directly at the computed fold neighborhood. At the critical point and the nearest well-corrected continuation designs it recomputes the unfiltered generalized FE eigen-spectrum, then reports the first several flexible frequencies, the <span class="math">f1–f2</span> and <span class="math">f2–f3</span> gaps, clearance above the implementation's 1 Hz flexible-mode selector, and the two rigid inertia eigenvalues and their gap.</p>
-  <p>This is not another catastrophe search. Its purpose is to establish that the selected performance quantities are being evaluated on simple, consistently ordered eigenvalue branches, away from the mode-selection threshold. In that regime the smooth matrix dependence described above supports smooth local eigenvalue performance coordinates.</p>
+  <h2>Active/redundant decomposition and fold proposition</h2>
+
+  <h3>1. Separate ordinary design redundancy from the fold direction</h3>
+  <p>Let the selected local performance residual be <span class="math">R(x, μ) ∈ Rᵐ</span>, with more structural design coordinates than selected performance equations (<span class="math">n &gt; m</span>). At a regular design the Jacobian <span class="math">J = D_xR</span> already has an ordinary null space of dimension <span class="math">n-m</span>. Those directions are the familiar design-capacity/redundancy directions and do not, by themselves, constitute a catastrophe.</p>
+  <p>Choose local active coordinates <span class="math">y ∈ Rᵐ</span> transverse to the ordinary redundancy and redundant coordinates <span class="math">r ∈ Rⁿ⁻ᵐ</span>. Locally write <span class="math">x = Ψ(y,r)</span> and define</p>
+  <p class="math">G(y,r,μ) = R(Ψ(y,r), μ).</p>
+  <p>At a regular point <span class="math">D_yG</span> has full rank <span class="math">m</span>. The observed fold is an additional rank loss in this active map:</p>
+  <p class="math">rank D_yG(y_c,r_c,μ_c) = m - 1.</p>
+  <p>Thus the critical direction is not one of the persistent <span class="math">n-m</span> redundant directions. It is the single direction that becomes singular inside the normally full-rank active design-to-performance subspace.</p>
+
+  <h3>2. Lyapunov–Schmidt reduction of the active map</h3>
+  <p>Let <span class="math">v_c</span> and <span class="math">u_c</span> span the right and left kernels of the corank-one active derivative:</p>
+  <p class="math">D_yG_c v_c = 0, &nbsp;&nbsp; u_cᵀD_yG_c = 0.</p>
+  <p>Decompose the active coordinates as</p>
+  <p class="math">y = y_c + z v_c + Ww,</p>
+  <p>where <span class="math">W</span> spans a regular complement. The complementary projected equations have nonsingular derivative with respect to <span class="math">w</span>; under the local smoothness conditions this gives a smooth function <span class="math">w=w(z,μ)</span>. Projection onto the left critical direction yields the scalar reduced equation</p>
+  <p class="math">g(z,μ)=u_cᵀG(y_c+zv_c+Ww(z,μ),r_c,μ)=0.</p>
+
+  <h3>3. Unfolding by the physical control</h3>
+  <p>Use the physical local control displacement</p>
+  <p class="math">μ = H_max - H_max,c.</p>
+  <p>The required transversality condition is</p>
+  <p class="math">g_μ(0,0) ≠ 0.</p>
+  <p>This means changing the selected <span class="math">H_max</span> target moves the reduced equation across the singular set rather than merely moving tangentially along it. The computed control-transversality diagnostic supplies numerical evidence for this condition.</p>
+
+  <h3>4. Fold nondegeneracy and normal form</h3>
+  <p>At the critical design the fold conditions are</p>
+  <p class="math">g(0,0)=0, &nbsp; g_z(0,0)=0, &nbsp; g_zz(0,0) ≠ 0, &nbsp; g_μ(0,0) ≠ 0.</p>
+  <p>Hence locally</p>
+  <p class="math">g(z,μ)=aμ+bz²+O(|z|³+|zμ|+μ²), &nbsp; a≠0, b≠0.</p>
+  <p>Under smooth local changes and rescalings of state and control coordinates, this germ is equivalent to</p>
+  <p class="math">M ± Z² = 0.</p>
+  <p>A corresponding reduced mathematical potential is</p>
+  <p class="math">V(Z,M)=Z³/3 ± MZ,</p>
+  <p>whose stationary equation is the fold normal form. This is a reduced mathematical potential, not mechanical potential energy.</p>
+
+  <h3>5. Proposition for the present robot design problem</h3>
+  <div class="ok" style="padding:10px;border-radius:6px">
+    <strong>Proposition (local fold classification, conditional on the stated smooth-map hypotheses).</strong>
+    In the neighborhood of the computed critical robot design, suppose the selected design-to-performance residual map is smooth; the ordinary <span class="math">n-m</span> redundancy admits a smooth local active/redundant decomposition; the active derivative has corank exactly one at the computed critical point; its regular complement remains nonsingular; and the selected <span class="math">H_max</span> control is transverse to the singular set. If the projected quadratic coefficient is nonzero, then the Lyapunov–Schmidt reduction of the local robot design problem is smoothly equivalent to the fold normal form <span class="math">M ± Z²=0</span>.
+  </div>
+
+  <h3>6. Evidence supporting the proposition's hypotheses</h3>
+  <p>The numerical computation supplies mutually consistent evidence for: isolated active near-rank loss; a single critical direction relative to the regular active spectrum; nonzero projected quadratic curvature; nonzero control transversality; derivative robustness; two distinct local solution branches; a pseudo-arclength turning point; convergence toward <span class="math">μ=Cz²</span> as the fitting neighborhood shrinks; persistence of the quadratic fold germ under multiple legitimate critical-point coordinate/complement constructions; and strong separation of the selected flexible and inertia eigenvalues in the critical neighborhood.</p>
+  <p>The spectral audit specifically removes a plausible source of nonsmoothness: the selected flexible modes remain far from one another and far from the implementation's mode-selection threshold, while the two inertia eigenvalues remain distinct.</p>
+
+  <h3>7. Scope of the claim</h3>
+  <p>The proposition is local. It does not assert a global bifurcation structure, global uniqueness of the catastrophe set, or a mechanical-energy instability. It classifies the locally reduced design-to-performance equations near the computed critical design.</p>
+  <div class="warn" style="padding:8px;border-radius:6px;margin-top:8px">
+    <strong>Terminology:</strong> the accumulated evidence supports describing the result as a <em>numerically identified Thom-type fold catastrophe in the locally reduced robot design-to-performance map</em>, provided the smooth active/redundant coordinate decomposition and regular-complement assumptions are stated explicitly. A theorem-level claim of a Thom catastrophe would require a formal analytic verification of all hypotheses rather than numerical evidence alone.
+  </div>
 </section>
 </body></html>
