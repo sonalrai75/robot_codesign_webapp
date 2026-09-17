@@ -29,7 +29,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 <div class="tablewrap"><table>
 <thead><tr><th>Catastrophe</th><th>Critical state dimension</th><th>Control parameters</th><th>Interpretation</th><th>Current app status</th></tr></thead>
 <tbody>
-<tr><td><b>Fold</b></td><td>1</td><td>1</td><td>A solution branch turns back; locally two solutions can merge and disappear.</td><td class="status implemented">Implemented + numerical verification suite</td></tr>
+<tr><td><b>Fold</b></td><td>1</td><td>1</td><td>A solution branch turns back; locally two solutions can merge and disappear.</td><td class="status implemented">Implemented: screening, numerical verification, pseudo-arclength continuation, turning-point detection, and paired-branch design visualization</td></tr>
 <tr><td><b>Cusp</b></td><td>1</td><td>2</td><td>A fold becomes degenerate; two fold curves can meet in a cusp structure.</td><td class="status partial">Candidate screening implemented</td></tr>
 <tr><td><b>Swallowtail</b></td><td>1</td><td>3</td><td>A still higher degeneracy in the one-critical-direction hierarchy.</td><td class="status planned">Planned</td></tr>
 <tr><td><b>Butterfly</b></td><td>1</td><td>4</td><td>Higher-order one-state degeneracy requiring four controls for a generic unfolding.</td><td class="status planned">Planned</td></tr>
@@ -60,7 +60,25 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 <h2>What the current fold verification tests</h2>
 <p>The fold workflow goes beyond merely ranking a small singular value. The verification suite is designed to examine:</p>
 <p><span class="pill">singularity localization</span><span class="pill">corank one</span><span class="pill">a₂ ≠ 0</span><span class="pill">control transversality</span><span class="pill">derivative robustness</span><span class="pill">two-branch probe</span><span class="pill">design-bound effects</span><span class="pill">continuation</span></p>
-<p>The interface should retain <b>Fold candidate</b> when evidence is incomplete. A stronger label such as <b>Fold singularity numerically verified</b> is reserved for cases that pass the implemented numerical verification requirements.</p>
+<p>The interface retains <b>Fold candidate</b> while the local evidence is incomplete. After continuation, a result can advance to <b>Fold singularity — numerically supported</b> when isolated near-rank loss and a control turning point occur in the same neighborhood while the other implemented fold tests remain consistent. This is deliberately distinct from claiming that a Thom catastrophe has been proved.</p>
+</div>
+
+
+<div class="card">
+<h2>How the implemented fold workflow builds evidence</h2>
+<p>The current fold analysis follows a staged numerical workflow rather than treating a small singular value as a conclusion:</p>
+<div class="flow">Grid screening → Near-rank loss → Higher-order tests → Two-branch probe → Pseudo-arclength continuation → Turning-point test → Paired branch designs</div>
+<p><b>Grid screening</b> searches selected control-performance planes for weak directions. <b>Higher-order verification</b> then checks the active singular spectrum, the projected quadratic coefficient a₂, control transversality, and finite-difference robustness. The <b>two-branch probe</b> asks whether distinct local designs can be corrected back to the same selected performance.</p>
+<p><b>Pseudo-arclength continuation</b> follows a reproducible one-dimensional slice of the redundant level-set manifold through the candidate. A fold is strengthened when the selected control reaches a turning point while one active singular value becomes isolated and small. The app records the continuation tangent, residual, singular-value ratio, condition number, and section minimum along the trace.</p>
+<p>Continuation evidence is fed back into the verification dashboard. Thus singularity localization, corank-one behavior, and the turning-point test can change from <b>INCONCLUSIVE</b> to <b>PASS</b> when their numerical criteria are met.</p>
+</div>
+
+<div class="card">
+<h2>Two different designs with the same selected performance</h2>
+<p>On the <b>two-solution side</b> of a generic fold, two distinct structural designs can satisfy essentially the same selected performance vector:</p>
+<div class="eq">x<sub>A</sub> ≠ x<sub>B</sub>, &nbsp;&nbsp; F(x<sub>A</sub>) ≈ F(x<sub>B</sub>) = F*</div>
+<p>The paired-branch visualization solves and displays these two designs side by side using the actual robot geometry. It also reports their design-space separation, solver residuals, and the numerical agreement of the selected performance quantities. These are two branches on the same feasible side of the fold—not one feasible design on each side of the catastrophe.</p>
+<p>As the target approaches the fold, the two branches approach one another and coalesce at the turning point. Beyond the fold, the corresponding local solutions cease to exist. This provides a geometric interpretation of the fold that complements the singular-value and continuation diagnostics.</p>
 </div>
 
 <div class="card">
@@ -77,7 +95,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 
 <div class="card">
 <h2>Development roadmap</h2>
-<p><b>Current:</b> fold screening and verification; cusp candidate screening. <b>Next:</b> complete fold continuation/bound diagnostics, strengthen cusp verification, then add higher-order corank-one analysis for swallowtail and butterfly. <b>Later:</b> monitor the full active singular spectrum for simultaneous two-direction rank loss and implement the projected two-dimensional analysis needed for the three umbilics.</p>
+<p><b>Current:</b> fold screening, local verification, pseudo-arclength continuation, turning-point detection, optional finite-bound diagnostics, and paired-branch design visualization; cusp candidate screening. <b>Next:</b> strengthen cusp verification by continuing the fold locus and testing the additional cusp degeneracy and unfolding conditions, then add higher-order corank-one analysis for swallowtail and butterfly. <b>Later:</b> monitor the full active singular spectrum for simultaneous two-direction rank loss and implement the projected two-dimensional analysis needed for the three umbilics.</p>
 </div>
 <p><a href="/target-search">← Return to Global Performance Target Search</a></p>
 </div></body></html>
