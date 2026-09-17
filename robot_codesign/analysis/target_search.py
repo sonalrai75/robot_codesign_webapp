@@ -617,14 +617,38 @@ def continue_fold_candidate(
                     dist=float(np.linalg.norm(xa-xb))
                     pa=ra['performance']; pb=rb['performance']
                     diffs={n:float(abs(pa[n]-pb[n])) for n in names}
+                    rel_diffs={n:float(abs(pa[n]-pb[n])/max(0.5*(abs(pa[n])+abs(pb[n])),1e-15)) for n in names}
+                    ta=np.r_[np.asarray(ra['robot'].t1,float),np.asarray(ra['robot'].t2,float)]
+                    tb=np.r_[np.asarray(rb['robot'].t1,float),np.asarray(rb['robot'].t2,float)]
+                    dt=tb-ta
+                    dt_rel=dt/np.maximum(0.5*(np.abs(ta)+np.abs(tb)),1e-15)
+                    # Compare branch separation with the local weakest design direction.
+                    # The sign of an SVD vector is arbitrary, so the alignment magnitude is reported.
+                    xmid=0.5*(xa+xb); rmid=robot.with_design_vector(xmid)
+                    Jmid=target_jacobian(rmid,pair_specs,context)
+                    _,_,Vtmid=np.linalg.svd(Jmid,full_matrices=False)
+                    vcrit=np.asarray(Vtmid[-1],float)
+                    dx=xb-xa
+                    parallel=float(np.dot(vcrit,dx))
+                    perp_vec=dx-parallel*vcrit
+                    perp=float(np.linalg.norm(perp_vec))
+                    frac=float(abs(parallel)/max(np.linalg.norm(dx),1e-15))
                     paired_designs={
                         'control_metric':control_metrics[1],'common_control_target':float(pair_level),
                         'design_distance_log':dist,
+                        'design_distance_relative':float(np.linalg.norm(dt)/max(0.5*(np.linalg.norm(ta)+np.linalg.norm(tb)),1e-15)),
+                        'critical_direction_projection':parallel,
+                        'critical_direction_projection_abs':abs(parallel),
+                        'orthogonal_distance_log':perp,
+                        'critical_direction_fraction':frac,
                         'branch_a':{'t1':list(map(float,ra['robot'].t1)),'t2':list(map(float,ra['robot'].t2)),
                                     'performance':pa,'residual_inf':ra['residual_inf']},
                         'branch_b':{'t1':list(map(float,rb['robot'].t1)),'t2':list(map(float,rb['robot'].t2)),
                                     'performance':pb,'residual_inf':rb['residual_inf']},
+                        'section_absolute_differences':list(map(float,dt)),
+                        'section_relative_differences':list(map(float,dt_rel)),
                         'absolute_performance_differences':diffs,
+                        'relative_performance_differences':rel_diffs,
                         'interpretation':'Two independently corrected structural designs on opposite local branches at the same selected performance level.'
                     }
 
