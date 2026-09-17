@@ -652,10 +652,68 @@ def continue_fold_candidate(
                         'interpretation':'Two independently corrected structural designs on opposite local branches at the same selected performance level.'
                     }
 
+    # Local fold normal-form diagnostic.  Use the best rank-loss point as the
+    # critical design x_c, project nearby designs onto its weakest right-singular
+    # direction, and test whether the continued control obeys mu ~ C z^2.
+    # This is a numerical local-reduction diagnostic, not by itself a proof that
+    # the full engineering model is a classical gradient-potential catastrophe.
+    normal_form=None
+    try:
+        xc_robot=robot.with_design_vector(np.log(np.maximum(np.r_[np.asarray(best['t1'],float),np.asarray(best['t2'],float)],1e-15)))
+        eta_c=float(best['eta'])
+        Jc=target_jacobian(xc_robot,specs_for_eta(eta_c),context)
+        _,svc,Vtc=np.linalg.svd(Jc,full_matrices=False)
+        vc=np.asarray(Vtc[-1],float); xc=xc_robot.design_vector()
+        control_c=float(best['control_value'])
+        pts=[]
+        for i,q in enumerate(trace):
+            if not q.get('converged',False) or float(q.get('residual_inf',1.0))>1e-4: continue
+            xq=np.log(np.maximum(np.r_[np.asarray(q['t1'],float),np.asarray(q['t2'],float)],1e-15))
+            z=float(np.dot(vc,xq-xc))
+            mu=float(q['control_value'])-control_c
+            mu_log=float(np.log(float(q['control_value'])/control_c))
+            pts.append({'trace_index':i,'z':z,'z2':z*z,'mu':mu,'mu_log':mu_log,
+                        'control_value':float(q['control_value']),'residual_inf':float(q['residual_inf'])})
+        fits=[]
+        ordered=sorted(pts,key=lambda q:abs(q['z']))
+        for frac,label in ((1.0,'100%'),(.75,'75%'),(.50,'50%')):
+            n=max(5,int(np.ceil(len(ordered)*frac)))
+            use=ordered[:min(n,len(ordered))]
+            if len(use)<5: continue
+            z=np.asarray([q['z'] for q in use],float); mu=np.asarray([q['mu'] for q in use],float)
+            # General cubic fit diagnoses coordinate leakage and higher order terms.
+            X=np.column_stack([np.ones_like(z),z,z*z,z*z*z])
+            coef=np.linalg.lstsq(X,mu,rcond=None)[0]; pred=X@coef
+            ss=float(np.sum((mu-np.mean(mu))**2)); r2=1.0-float(np.sum((mu-pred)**2))/max(ss,1e-30)
+            # Canonical fold test constrained through the critical point: mu=C z^2.
+            z2=z*z; C=float(np.dot(z2,mu)/max(np.dot(z2,z2),1e-30)); pred2=C*z2
+            r2q=1.0-float(np.sum((mu-pred2)**2))/max(float(np.sum(mu*mu)),1e-30)
+            zscale=float(np.max(np.abs(z)))
+            quad=abs(float(coef[2]))*zscale*zscale
+            cubic=abs(float(coef[3]))*zscale**3
+            linear=abs(float(coef[1]))*zscale
+            fits.append({'window':label,'points':len(use),'max_abs_z':zscale,
+                         'c0':float(coef[0]),'c1':float(coef[1]),'c2':float(coef[2]),'c3':float(coef[3]),
+                         'r2_cubic':r2,'quadratic_C':C,'r2_mu_equals_Cz2':r2q,
+                         'linear_to_quadratic':float(linear/max(quad,1e-30)),
+                         'cubic_to_quadratic':float(cubic/max(quad,1e-30))})
+        closest=fits[-1] if fits else None
+        supported=bool(closest and abs(closest['quadratic_C'])>1e-12 and closest['r2_mu_equals_Cz2']>=.90 and closest['cubic_to_quadratic']<=.35)
+        normal_form={'status':'supported' if supported else 'diagnostic',
+            'critical_control_metric':control_metrics[1],'critical_control_value':control_c,
+            'critical_sigma_values':list(map(float,svc)),'critical_direction':list(map(float,vc)),
+            'points':pts,'fits':fits,
+            'canonical_relation':'mu ≈ C z^2, with z = v_c^T(x-x_c) and mu = control-control_c',
+            'potential_relation':'Integrating the reduced scalar form g(z,mu)=mu-C z^2 gives V(z,mu)=mu*z-(C/3)z^3 up to smooth rescaling and higher-order terms.',
+            'interpretation':('The shrinking-neighborhood continuation data are consistent with a local quadratic fold normal form.' if supported else 'The continuation data do not yet satisfy the configured numerical normal-form support criteria.'),
+            'caution':'This projection test supports local fold normal-form equivalence. A rigorous Thom classification still requires a justified smooth reduction/unfolding interpretation; the constructed reduced potential is mathematical, not mechanical potential energy.'}
+    except Exception as e:
+        normal_form={'status':'unavailable','error':str(e),'interpretation':'Normal-form diagnostic could not be evaluated.'}
+
     bounds_configured=section_min is not None or section_max is not None
     any_active=any(q['active_bounds'] for q in trace)
     return {"status":"completed","controls":control_metrics,"trace":trace,"turning_indices":turns,
-        "turning_point_detected":bool(turns),"best":best,"paired_designs":paired_designs,
+        "turning_point_detected":bool(turns),"best":best,"paired_designs":paired_designs,"normal_form":normal_form,
         "bounds":{"configured":bounds_configured,"section_min":section_min,"section_max":section_max,
                   "active_anywhere":any_active,
                   "interpretation":("No configured finite section bound became active on the computed trace." if bounds_configured and not any_active else

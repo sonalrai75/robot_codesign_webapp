@@ -199,6 +199,21 @@ function renderPairedDesigns(pair){
  <h4 style="margin-top:12px">Magnified branch difference ×10</h4><div class="muted">Visualization only. Deviations of each branch from their mean shape are multiplied by 10; numerical tables above contain the true values. Blue = A, red = B.</div>${magnifiedPairSvg(a,b,10)}
  <div class="ok" style="padding:8px;margin-top:8px;border-radius:6px"><b>Interpretation:</b> ${pair.interpretation} The key numerical test is nonzero design separation together with near-zero selected-performance separation.</div></div>`;
 }
+function renderNormalForm(nf){
+ if(!nf)return '';
+ if(nf.status==='unavailable')return `<div class="warn" style="margin-top:10px"><b>Fold normal-form diagnostic unavailable:</b> ${nf.error||''}</div>`;
+ let fits=nf.fits||[],pts=nf.points||[];
+ let rows=fits.map(f=>`<tr><td>${f.window}</td><td>${f.points}</td><td>${Number(f.max_abs_z).toExponential(3)}</td><td>${Number(f.quadratic_C).toExponential(5)}</td><td>${Number(f.r2_mu_equals_Cz2).toFixed(5)}</td><td>${Number(f.c1).toExponential(3)}</td><td>${Number(f.c2).toExponential(3)}</td><td>${Number(f.c3).toExponential(3)}</td><td>${Number(f.linear_to_quadratic).toExponential(2)}</td><td>${Number(f.cubic_to_quadratic).toExponential(2)}</td></tr>`).join('');
+ let pr=pts.map(q=>`<tr><td>${q.trace_index}</td><td>${Number(q.z).toExponential(5)}</td><td>${Number(q.z2).toExponential(5)}</td><td>${Number(q.mu).toExponential(5)}</td><td>${Number(q.control_value).toPrecision(8)}</td><td>${Number(q.residual_inf).toExponential(2)}</td></tr>`).join('');
+ let cls=nf.status==='supported'?'ok':'warn';
+ return `<div class="card" style="margin-top:12px"><h4>Fold Normal-Form Verification</h4><div class="${cls}" style="padding:8px;border-radius:6px"><b>${nf.status==='supported'?'Local quadratic fold normal form numerically supported':'Normal-form diagnostic incomplete'}</b><br>${nf.interpretation||''}</div>
+ <div style="margin-top:8px"><b>Critical control:</b> ${nf.critical_control_metric} = ${Number(nf.critical_control_value).toPrecision(9)}<br><b>Tested relation:</b> μ ≈ C z², where z = v<sub>c</sub><sup>T</sup>(x−x<sub>c</sub>) and μ = control−control<sub>c</sub>.</div>
+ <h4 style="margin-top:12px">Shrinking-neighborhood fits</h4><div class="tablewrap"><table><thead><tr><th>Neighborhood</th><th>Points</th><th>max |z|</th><th>C</th><th>R²: μ=Cz²</th><th>c₁</th><th>c₂</th><th>c₃</th><th>linear/quadratic</th><th>cubic/quadratic</th></tr></thead><tbody>${rows}</tbody></table></div>
+ <div class="muted" style="margin-top:6px">The general diagnostic fit is μ=c₀+c₁z+c₂z²+c₃z³. As the neighborhood shrinks, a fold should be increasingly dominated by the nonzero quadratic term.</div>
+ <h4 style="margin-top:12px">Projected continuation coordinates</h4><div class="tablewrap"><table><thead><tr><th>Trace #</th><th>z</th><th>z²</th><th>μ</th><th>Control</th><th>Residual</th></tr></thead><tbody>${pr}</tbody></table></div>
+ <div class="ok" style="padding:8px;margin-top:8px;border-radius:6px"><b>Reduced mathematical potential:</b> ${nf.potential_relation||''}</div><div class="warn" style="padding:8px;margin-top:8px;border-radius:6px"><b>Classification caution:</b> ${nf.caution||''}</div></div>`;
+}
+
 function updateVerificationFromContinuation(r){
  if(!lastFoldVerification)return;
  let tests=(lastFoldVerification.tests||[]).map(t=>({...t})),best=r.best||{};
@@ -216,7 +231,7 @@ function renderFoldContinuation(r){
  h+=`<div style="margin-top:8px"><b>Best rank-loss point:</b> ${r.controls[1]}=${Number(best.control_value).toPrecision(7)}; σmin/σmax=${Number(best.sigma_ratio).toExponential(3)}; σmin=${Number(best.sigma_min).toExponential(3)}; condition=${best.condition==null?'∞':Number(best.condition).toFixed(2)}.</div>`;
  h+=`<div class="${b.active_anywhere?'bad':'muted'}" style="margin-top:6px"><b>Bound diagnostic:</b> ${b.interpretation||''}</div>`;
  h+=`<div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>#</th><th>${r.controls[1]}</th><th>σmin/σmax</th><th>Cond.</th><th>d control/ds</th><th>Residual</th><th>Section min</th><th>Bounds</th></tr></thead><tbody>${tr.map((q,i)=>`<tr class="${turns.includes(i)?'ok':''}"><td>${i}</td><td>${Number(q.control_value).toPrecision(7)}</td><td>${Number(q.sigma_ratio).toExponential(2)}</td><td>${q.condition==null?'∞':Number(q.condition).toFixed(1)}</td><td>${q.tangent_control==null?'—':Number(q.tangent_control).toExponential(2)}</td><td>${Number(q.residual_inf).toExponential(1)}</td><td>${Number(q.section_min_actual).toExponential(3)}</td><td>${(q.active_bounds||[]).join(', ')||'—'}</td></tr>`).join('')}</tbody></table></div>`;
- h+=renderPairedDesigns(r.paired_designs); $('arcresult').innerHTML=h; updateVerificationFromContinuation(r);
+ h+=renderPairedDesigns(r.paired_designs); h+=renderNormalForm(r.normal_form); $('arcresult').innerHTML=h; updateVerificationFromContinuation(r);
 }
 async function continueFold(){
  if(!selectedFoldCandidate){$('arcstatus').textContent='Verify a fold candidate first.';return;}
