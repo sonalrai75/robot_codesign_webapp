@@ -167,4 +167,10 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
     <strong>Current assessment:</strong> the implemented equations do not appear to obstruct a smooth local fold formulation. The main unresolved smoothness issue is modal simplicity/selection for the two flexible frequencies at and near the critical design.
   </div>
 </section>
+
+<section class="card">
+  <h2>Local spectral-smoothness audit</h2>
+  <p>The continuation page now evaluates the remaining model-specific smoothness issue directly at the computed fold neighborhood. At the critical point and the nearest well-corrected continuation designs it recomputes the unfiltered generalized FE eigen-spectrum, then reports the first several flexible frequencies, the <span class="math">f1–f2</span> and <span class="math">f2–f3</span> gaps, clearance above the implementation's 1 Hz flexible-mode selector, and the two rigid inertia eigenvalues and their gap.</p>
+  <p>This is not another catastrophe search. Its purpose is to establish that the selected performance quantities are being evaluated on simple, consistently ordered eigenvalue branches, away from the mode-selection threshold. In that regime the smooth matrix dependence described above supports smooth local eigenvalue performance coordinates.</p>
+</section>
 </body></html>

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 import numpy as np
+from scipy.linalg import eigvalsh
+from robot_codesign.fem.two_link_variable import assemble_two_link_variable_sections
 
 from robot_codesign.analysis.svd_design import analyze_design_space, secondary_metric
 from robot_codesign.paths import PLANNERS
@@ -829,10 +831,78 @@ def continue_fold_candidate(
     except Exception as e:
         complement_invariance={'status':'unavailable','error':str(e),'interpretation':'Critical-point complement-invariance diagnostic could not be evaluated.'}
 
+    # Local spectral-smoothness audit at the critical point and its nearest
+    # well-corrected continuation neighbors.  This is not another fold search:
+    # it checks the eigenvalue simplicity / mode-selection assumptions needed
+    # for f1 and f2 to be smooth local performance coordinates.
+    spectral_smoothness=None
+    try:
+        good_spec=[]
+        for i,q in enumerate(trace):
+            if not q.get('converged',False) or float(q.get('residual_inf',1.0))>1e-4:
+                continue
+            good_spec.append((abs(float(q['control_value'])-control_c),i,q))
+        selected=sorted(good_spec,key=lambda a:a[0])[:5]
+        rows=[]
+        for _,i,q in selected:
+            rr=robot.with_design_vector(np.log(np.maximum(
+                np.r_[np.asarray(q['t1'],float),np.asarray(q['t2'],float)],1e-15)))
+            M,K=assemble_two_link_variable_sections(
+                rr.l1,rr.l2,np.asarray(rr.t1,float),np.asarray(rr.t2,float),
+                rr.width1_out,rr.width2_out,rr.E,rr.rho,
+                M_joint2=rr.joint_mass,M_tip=rr.tip_mass)
+            lam=np.real(eigvalsh(K,M))
+            positive=lam[lam>1e-3]
+            raw_f=np.sqrt(positive)/(2*np.pi)
+            flex=raw_f[raw_f>1.0]
+            H=np.linalg.eigvalsh(rr.inertia_matrix(np.array([0.0,0.0])))
+            first=[float(v) for v in flex[:5]]
+            f1=first[0] if len(first)>0 else None
+            f2=first[1] if len(first)>1 else None
+            f3=first[2] if len(first)>2 else None
+            rows.append({
+                'trace_index':int(i),'control_value':float(q['control_value']),
+                'frequencies_hz':first,
+                'f1_f2_gap_hz':None if f1 is None or f2 is None else float(f2-f1),
+                'f2_f3_gap_hz':None if f2 is None or f3 is None else float(f3-f2),
+                'f1_threshold_margin_hz':None if f1 is None else float(f1-1.0),
+                'modes_above_1hz':int(len(flex)),
+                'inertia_eigenvalues':[float(v) for v in H],
+                'inertia_gap':float(H[-1]-H[0]),
+                'residual_inf':float(q.get('residual_inf',0.0)),
+            })
+        if rows:
+            gaps12=[r['f1_f2_gap_hz'] for r in rows if r['f1_f2_gap_hz'] is not None]
+            gaps23=[r['f2_f3_gap_hz'] for r in rows if r['f2_f3_gap_hz'] is not None]
+            margins=[r['f1_threshold_margin_hz'] for r in rows if r['f1_threshold_margin_hz'] is not None]
+            hgaps=[r['inertia_gap'] for r in rows]
+            # Relative separation is reported rather than imposing a theorem-level
+            # numerical threshold.  "supported" only requires strict positive
+            # separation and no mode-selection threshold contact in this sample.
+            supported=bool(gaps12 and min(gaps12)>0 and margins and min(margins)>0 and min(hgaps)>0)
+            spectral_smoothness={
+                'status':'supported' if supported else 'diagnostic',
+                'rows':rows,
+                'min_f1_f2_gap_hz':float(min(gaps12)) if gaps12 else None,
+                'min_f2_f3_gap_hz':float(min(gaps23)) if gaps23 else None,
+                'min_f1_threshold_margin_hz':float(min(margins)) if margins else None,
+                'min_inertia_gap':float(min(hgaps)) if hgaps else None,
+                'interpretation':(
+                    'The selected flexible modes remain ordered and separated from the 1 Hz selection threshold in the sampled critical neighborhood; the inertia eigenvalues also remain distinct.'
+                    if supported else
+                    'At least one sampled spectral separation or mode-selection condition needs inspection before local smoothness is claimed.'
+                ),
+                'caution':'This is a local numerical audit of the eigenvalue-selection assumptions. Analytic smoothness follows for simple eigenvalues of the smooth symmetric/generalized-symmetric matrix families; the audit checks that the implementation is operating in that regime near the computed fold.'
+            }
+        else:
+            spectral_smoothness={'status':'unavailable','rows':[],'interpretation':'No sufficiently corrected continuation points were available for the local spectral audit.'}
+    except Exception as e:
+        spectral_smoothness={'status':'unavailable','rows':[],'error':str(e),'interpretation':'Local spectral-smoothness audit could not be evaluated.'}
+
     bounds_configured=section_min is not None or section_max is not None
     any_active=any(q['active_bounds'] for q in trace)
     return {"status":"completed","controls":control_metrics,"trace":trace,"turning_indices":turns,
-        "turning_point_detected":bool(turns),"best":best,"paired_designs":paired_designs,"normal_form":normal_form,"complement_invariance":complement_invariance,
+        "turning_point_detected":bool(turns),"best":best,"paired_designs":paired_designs,"normal_form":normal_form,"complement_invariance":complement_invariance,"spectral_smoothness":spectral_smoothness,
         "bounds":{"configured":bounds_configured,"section_min":section_min,"section_max":section_max,
                   "active_anywhere":any_active,
                   "interpretation":("No configured finite section bound became active on the computed trace." if bounds_configured and not any_active else

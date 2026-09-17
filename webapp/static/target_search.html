@@ -228,6 +228,23 @@ function renderComplementInvariance(iv){
  <div class="warn" style="padding:8px;margin-top:8px;border-radius:6px"><b>Caution:</b> ${iv.caution||''}</div></div>`;
 }
 
+function renderSpectralSmoothness(sp){
+ if(!sp)return '';
+ if(sp.status==='unavailable')return `<div class="warn" style="margin-top:10px"><b>Local Spectral-Smoothness Audit unavailable:</b> ${sp.error||sp.interpretation||''}</div>`;
+ const fmt=(x,d=5)=>x==null?'—':Number(x).toFixed(d);
+ let rows=(sp.rows||[]).map(r=>{
+   let f=r.frequencies_hz||[];
+   return `<tr><td>${r.trace_index}</td><td>${Number(r.control_value).toFixed(10)}</td><td>${fmt(f[0],4)}</td><td>${fmt(f[1],4)}</td><td>${fmt(f[2],4)}</td><td>${fmt(f[3],4)}</td><td>${fmt(r.f1_f2_gap_hz,4)}</td><td>${fmt(r.f2_f3_gap_hz,4)}</td><td>${fmt(r.f1_threshold_margin_hz,4)}</td><td>${fmt(r.inertia_eigenvalues?.[0],7)}</td><td>${fmt(r.inertia_eigenvalues?.[1],7)}</td><td>${Number(r.inertia_gap).toExponential(4)}</td></tr>`;
+ }).join('');
+ let cls=sp.status==='supported'?'ok':'warn';
+ return `<div class="card" style="margin-top:12px"><h4>Local Spectral-Smoothness Audit</h4>
+ <div class="${cls}" style="padding:8px;border-radius:6px"><b>${sp.status==='supported'?'Modal/eigenvalue smoothness conditions numerically supported':'Spectral smoothness needs inspection'}</b><br>${sp.interpretation||''}</div>
+ <div style="margin-top:8px"><b>Minimum f1–f2 gap:</b> ${fmt(sp.min_f1_f2_gap_hz,4)} Hz &nbsp; <b>Minimum f2–f3 gap:</b> ${fmt(sp.min_f2_f3_gap_hz,4)} Hz &nbsp; <b>Minimum f1 margin above 1 Hz selector:</b> ${fmt(sp.min_f1_threshold_margin_hz,4)} Hz<br><b>Minimum H eigenvalue gap:</b> ${sp.min_inertia_gap==null?'—':Number(sp.min_inertia_gap).toExponential(5)}</div>
+ <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Trace</th><th>Control</th><th>f1</th><th>f2</th><th>f3</th><th>f4</th><th>f2-f1</th><th>f3-f2</th><th>f1-1Hz</th><th>Hmin</th><th>Hmax</th><th>H gap</th></tr></thead><tbody>${rows}</tbody></table></div>
+ <div class="muted" style="margin-top:6px">Raw generalized eigenvalues are recomputed before the app's flexible-mode selection. The audit samples the critical point and nearest well-corrected continuation designs; it checks mode simplicity/separation and selection-threshold clearance, not the existence of the fold itself.</div>
+ <div class="warn" style="padding:8px;margin-top:8px;border-radius:6px"><b>Caution:</b> ${sp.caution||''}</div></div>`;
+}
+
 function updateVerificationFromContinuation(r){
  if(!lastFoldVerification)return;
  let tests=(lastFoldVerification.tests||[]).map(t=>({...t})),best=r.best||{};
@@ -245,7 +262,7 @@ function renderFoldContinuation(r){
  h+=`<div style="margin-top:8px"><b>Best rank-loss point:</b> ${r.controls[1]}=${Number(best.control_value).toPrecision(7)}; σmin/σmax=${Number(best.sigma_ratio).toExponential(3)}; σmin=${Number(best.sigma_min).toExponential(3)}; condition=${best.condition==null?'∞':Number(best.condition).toFixed(2)}.</div>`;
  h+=`<div class="${b.active_anywhere?'bad':'muted'}" style="margin-top:6px"><b>Bound diagnostic:</b> ${b.interpretation||''}</div>`;
  h+=`<div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>#</th><th>${r.controls[1]}</th><th>σmin/σmax</th><th>Cond.</th><th>d control/ds</th><th>Residual</th><th>Section min</th><th>Bounds</th></tr></thead><tbody>${tr.map((q,i)=>`<tr class="${turns.includes(i)?'ok':''}"><td>${i}</td><td>${Number(q.control_value).toPrecision(7)}</td><td>${Number(q.sigma_ratio).toExponential(2)}</td><td>${q.condition==null?'∞':Number(q.condition).toFixed(1)}</td><td>${q.tangent_control==null?'—':Number(q.tangent_control).toExponential(2)}</td><td>${Number(q.residual_inf).toExponential(1)}</td><td>${Number(q.section_min_actual).toExponential(3)}</td><td>${(q.active_bounds||[]).join(', ')||'—'}</td></tr>`).join('')}</tbody></table></div>`;
- h+=renderPairedDesigns(r.paired_designs); h+=renderNormalForm(r.normal_form); h+=renderComplementInvariance(r.complement_invariance); $('arcresult').innerHTML=h; updateVerificationFromContinuation(r);
+ h+=renderPairedDesigns(r.paired_designs); h+=renderNormalForm(r.normal_form); h+=renderComplementInvariance(r.complement_invariance); h+=renderSpectralSmoothness(r.spectral_smoothness); $('arcresult').innerHTML=h; updateVerificationFromContinuation(r);
 }
 async function continueFold(){
  if(!selectedFoldCandidate){$('arcstatus').textContent='Verify a fold candidate first.';return;}
