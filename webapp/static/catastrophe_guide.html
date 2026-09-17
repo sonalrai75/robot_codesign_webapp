@@ -89,4 +89,56 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
   <p>This replaces the earlier nearby-anchor SVD test. Re-centering a quadratic fold model at regular continuation points was unnecessarily strong: regular points are not themselves folds, so they need not satisfy a fold equation centered at those points.</p>
   <p><strong>Scope:</strong> persistence across these coordinate/complement choices is numerical evidence that the local fold germ is not an artifact of one chosen representation. A formal Thom classification still requires the smoothness, corank-one, nondegeneracy, and unfolding hypotheses to be stated and justified.</p>
 </section>
+
+<section class="card">
+  <h2>Formal fold-classification hypotheses for this robot design problem</h2>
+  <p>The numerical evidence now supports a coordinate-robust local fold germ. The remaining step is not another numerical search, but an explicit statement of the hypotheses under which the local design problem admits a Lyapunov–Schmidt reduction and the standard fold theorem applies.</p>
+
+  <h3>1. Local residual map</h3>
+  <p>Let <span class="math">x ∈ Rⁿ</span> denote the local structural design coordinates and let <span class="math">μ</span> denote the selected unfolding control, here the local change in <span class="math">H_max</span>. Write the selected performance equations as</p>
+  <p class="math">R(x, μ) = 0.</p>
+  <p>The classification is local: all statements concern a neighborhood of the computed critical design <span class="math">(x_c, μ_c)</span>, not the entire global design space.</p>
+
+  <h3>2. Smoothness hypothesis</h3>
+  <p>Require <span class="math">R</span> to be sufficiently smooth in a neighborhood of the critical design (at least through the derivatives used in the fold reduction). This excludes nonsmooth switching of model definitions, discrete topology changes, eigenvalue crossings that destroy differentiability of the selected modal quantities, and activation of hard design bounds at the critical point. The present computation supplies numerical derivative-robustness evidence, but smoothness is a modeling hypothesis that should also be checked from the governing formulas and implementation.</p>
+
+  <h3>3. Active corank-one hypothesis</h3>
+  <p>Separate ordinary redundancy from the active design-to-performance directions. At the critical point, the active derivative must lose exactly one rank:</p>
+  <p class="math">D_x R(x_c, μ_c) v_c = 0, &nbsp;&nbsp; u_cᵀ D_x R(x_c, μ_c) = 0,</p>
+  <p>with one additional critical direction <span class="math">v_c</span> and all other active singular directions remaining regular. The observed isolated smallest singular value and continuation rank-loss behavior are numerical evidence for this condition.</p>
+
+  <h3>4. Lyapunov–Schmidt decomposition</h3>
+  <p>Choose a regular complementary subspace and write locally</p>
+  <p class="math">x = x_c + z v_c + W w.</p>
+  <p>Because the derivative restricted to the regular complement is nonsingular, the implicit-function theorem gives a smooth local solution <span class="math">w = w(z, μ)</span>. Projection onto the left critical direction then produces one scalar reduced equation</p>
+  <p class="math">g(z, μ) = u_cᵀ R(x_c + z v_c + W w(z, μ), μ) = 0.</p>
+  <p>The complement-invariance experiment supports the numerical persistence of the resulting fold germ under several legitimate local coordinate/complement choices.</p>
+
+  <h3>5. Fold nondegeneracy</h3>
+  <p>At the critical point the reduced equation must satisfy</p>
+  <p class="math">g(0,0)=0, &nbsp; g_z(0,0)=0, &nbsp; g_zz(0,0) ≠ 0.</p>
+  <p>The nonzero projected quadratic coefficient, derivative-robustness test, and shrinking-neighborhood quadratic fits provide numerical evidence for <span class="math">g_zz ≠ 0</span>.</p>
+
+  <h3>6. Unfolding / transversality</h3>
+  <p>The selected control must move the reduced equation transversely through the singular set:</p>
+  <p class="math">g_μ(0,0) ≠ 0.</p>
+  <p>The existing control-transversality diagnostic provides numerical evidence for this condition. It is this condition that makes the control a genuine local unfolding parameter rather than a tangent reparameterization of the singular set.</p>
+
+  <h3>7. Local normal form</h3>
+  <p>Under the smoothness, corank-one, regular-complement, nondegeneracy, and transversality hypotheses, the reduced equation has the expansion</p>
+  <p class="math">g(z, μ) = a μ + b z² + higher-order terms, &nbsp; a ≠ 0, b ≠ 0.</p>
+  <p>By smooth local changes of state and control coordinates this is equivalent to the canonical fold equation</p>
+  <p class="math">M ± Z² = 0.</p>
+  <p>The corresponding reduced mathematical potential may be written, up to sign, scaling, and smooth equivalence, as</p>
+  <p class="math">V(Z,M) = Z³/3 ± M Z, &nbsp;&nbsp; ∂V/∂Z = Z² ± M.</p>
+  <p>This potential is a local mathematical potential for the reduced scalar equation; it is not asserted to be the robot's mechanical potential energy.</p>
+
+  <h3>8. Current evidentiary status</h3>
+  <p><strong>Numerically supported:</strong> isolated active rank loss; nonzero quadratic curvature; control transversality; derivative robustness; two local branches; pseudo-arclength turning point; shrinking-neighborhood convergence to a quadratic normal form; and persistence of that fold germ under legitimate critical-point coordinate/complement changes.</p>
+  <p><strong>To justify analytically/document explicitly:</strong> smoothness of the selected performance map in the critical neighborhood; absence of a modal/eigenvalue nonsmoothness or active hard-bound mechanism at the critical design; the regular-complement hypothesis for the chosen active/redundant decomposition; and the precise identification of the selected control as a smooth unfolding parameter.</p>
+
+  <div class="warn" style="padding:8px;border-radius:6px;margin-top:10px">
+    <strong>Recommended terminology at the present stage:</strong> “coordinate-robust, numerically supported local fold singularity with Lyapunov–Schmidt reduced behavior consistent with the canonical fold normal form.” The stronger phrase “Thom fold catastrophe” should be used only after the modeling/smoothness and unfolding hypotheses above are explicitly justified for the local robot design map.
+  </div>
+</section>
 </body></html>
