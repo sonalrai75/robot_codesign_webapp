@@ -571,10 +571,67 @@ def continue_fold_candidate(
         if a is not None and b is not None and a*b<0:
             turns.append(i)
     best=min(trace,key=lambda q:q['sigma_ratio'])
+
+    # Construct two distinct designs at one common performance level on the
+    # two-solution side of the detected fold.  This is deliberately derived
+    # from the computed continuation trace rather than from an illustrative
+    # perturbation.  The common level is chosen inside the overlap of the two
+    # local branches and each branch is corrected independently to that level.
+    paired_designs=None
+    if turns and len(trace) >= 5:
+        ib=int(np.argmin([q['sigma_ratio'] for q in trace]))
+        left=trace[:ib]; right=trace[ib+1:]
+        if left and right:
+            fold_val=float(trace[ib]['control_value'])
+            left_hi=max(float(q['control_value']) for q in left)
+            right_hi=max(float(q['control_value']) for q in right)
+            overlap_hi=min(left_hi,right_hi)
+            if overlap_hi > fold_val*(1.0+1e-7):
+                pair_level=fold_val + 0.35*(overlap_hi-fold_val)
+                qa=min(left,key=lambda q:abs(float(q['control_value'])-pair_level))
+                qb=min(right,key=lambda q:abs(float(q['control_value'])-pair_level))
+                pair_specs=[]
+                for t in targets:
+                    v=base[t.metric]; rel=t.relation
+                    if t.metric in control_metrics: rel='equal'
+                    if t.metric==control_metrics[1]: v=pair_level
+                    pair_specs.append(TargetSpec(t.metric,rel,float(v),t.tolerance))
+                solved_pair=[]
+                for qseed in (qa,qb):
+                    try:
+                        xseed=np.log(np.maximum(np.r_[np.asarray(qseed['t1'],float),np.asarray(qseed['t2'],float)],1e-15))
+                        seed=robot.with_design_vector(xseed)
+                        sol=run_target_search(seed,pair_specs,context,max_iterations=max(20,corrector_iterations*4),
+                            step_limit=min(0.08,max(0.02,arclength_step*2.0)),secondary_objectives=[],
+                            null_step_fraction=0.0,safety_cap=max(30,corrector_iterations*5))
+                        rr=sol['final_robot']; vals=target_metrics(rr,pair_specs,context)
+                        actual=np.asarray([float(vals[n]) for n in names],float)
+                        targ=np.asarray([float(next(t.value for t in pair_specs if t.metric==n)) for n in names],float)
+                        resid=float(np.max(np.abs(np.log(actual)-np.log(targ))))
+                        solved_pair.append({'robot':rr,'performance':{n:float(vals[n]) for n in names},'residual_inf':resid})
+                    except Exception:
+                        solved_pair.append(None)
+                if all(z is not None for z in solved_pair):
+                    ra,rb=solved_pair
+                    xa=ra['robot'].design_vector(); xb=rb['robot'].design_vector()
+                    dist=float(np.linalg.norm(xa-xb))
+                    pa=ra['performance']; pb=rb['performance']
+                    diffs={n:float(abs(pa[n]-pb[n])) for n in names}
+                    paired_designs={
+                        'control_metric':control_metrics[1],'common_control_target':float(pair_level),
+                        'design_distance_log':dist,
+                        'branch_a':{'t1':list(map(float,ra['robot'].t1)),'t2':list(map(float,ra['robot'].t2)),
+                                    'performance':pa,'residual_inf':ra['residual_inf']},
+                        'branch_b':{'t1':list(map(float,rb['robot'].t1)),'t2':list(map(float,rb['robot'].t2)),
+                                    'performance':pb,'residual_inf':rb['residual_inf']},
+                        'absolute_performance_differences':diffs,
+                        'interpretation':'Two independently corrected structural designs on opposite local branches at the same selected performance level.'
+                    }
+
     bounds_configured=section_min is not None or section_max is not None
     any_active=any(q['active_bounds'] for q in trace)
     return {"status":"completed","controls":control_metrics,"trace":trace,"turning_indices":turns,
-        "turning_point_detected":bool(turns),"best":best,
+        "turning_point_detected":bool(turns),"best":best,"paired_designs":paired_designs,
         "bounds":{"configured":bounds_configured,"section_min":section_min,"section_max":section_max,
                   "active_anywhere":any_active,
                   "interpretation":("No configured finite section bound became active on the computed trace." if bounds_configured and not any_active else

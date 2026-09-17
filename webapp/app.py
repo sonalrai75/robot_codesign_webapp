@@ -13,7 +13,7 @@ from robot_codesign.analysis.svd_design import analyze_design_space, secondary_d
 from robot_codesign.analysis.target_search import TargetSpec, SecondarySpec, run_target_search, catastrophe_diagnostics, search_catastrophes, verify_fold_candidate, continue_fold_candidate
 
 ROOT=Path(__file__).resolve().parent
-app=FastAPI(title="Robot Co-Design Laboratory",version="0.17.0")
+app=FastAPI(title="Robot Co-Design Laboratory",version="0.18.0")
 app.mount("/static",StaticFiles(directory=ROOT/"static"),name="static")
 
 class RobotInput(BaseModel):
