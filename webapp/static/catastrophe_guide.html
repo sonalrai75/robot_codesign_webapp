@@ -141,4 +141,30 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
     <strong>Recommended terminology at the present stage:</strong> “coordinate-robust, numerically supported local fold singularity with Lyapunov–Schmidt reduced behavior consistent with the canonical fold normal form.” The stronger phrase “Thom fold catastrophe” should be used only after the modeling/smoothness and unfolding hypotheses above are explicitly justified for the local robot design map.
   </div>
 </section>
+
+<section class="card">
+  <h2>Model smoothness audit: what follows from the implemented equations</h2>
+  <p>This audit separates assumptions that follow analytically from the current model formulation from conditions that still require a local numerical check at the critical design.</p>
+
+  <h3>Structural coordinates</h3>
+  <p>The design variables are logarithms of the 20 positive element thicknesses. The physical thicknesses are recovered by <span class="math">t_i = exp(x_i)</span>. Therefore positivity is built into the coordinate chart and the map from design coordinates to physical sections is smooth for every finite <span class="math">x_i</span>. The fold found here is not created by clipping a thickness at zero.</p>
+
+  <h3>Rigid-body inertia metrics H_min and H_max</h3>
+  <p>For the catastrophe analysis the worst-case inertia matrix is evaluated at the fixed configuration <span class="math">q = (0,0)</span>. Its entries are assembled from exact piecewise mass moments of the positive element areas. Those moments are polynomial/linear functions of the physical section areas and hence smooth functions of the log-thickness coordinates.</p>
+  <p><span class="math">H_min</span> and <span class="math">H_max</span> are the ordered eigenvalues of a real symmetric 2×2 inertia matrix. Each eigenvalue is smooth locally provided the two inertia eigenvalues are distinct. The fold computations show a substantial separation between the selected minimum and maximum inertia levels, so an inertia-eigenvalue collision is not indicated in the critical neighborhood.</p>
+
+  <h3>Flexible frequencies f1 and f2</h3>
+  <p>The finite-element mass and stiffness matrices are assembled from Euler–Bernoulli elements. For each element, area is proportional to thickness and bending inertia is proportional to thickness cubed. Consequently the assembled matrices vary smoothly with positive thickness. The flexible frequencies are obtained from the symmetric generalized eigenproblem <span class="math">K φ = λ M φ</span> and <span class="math">f = sqrt(λ)/(2π)</span>.</p>
+  <p>A selected modal frequency is locally smooth when its generalized eigenvalue is positive and simple. The implementation removes near-zero mechanism/rigid modes and then selects the first two physically meaningful flexible modes. This introduces the principal remaining smoothness condition: near the fold, the selected modes must stay well separated from each other and from the mode-selection threshold so that no sorting/filtering switch occurs.</p>
+
+  <h3>What is analytically well supported</h3>
+  <p>Within a neighborhood containing only positive finite section dimensions and no eigenvalue collision, the implemented rigid inertia map, FE matrix assembly, exponential section parameterization, and simple-eigenvalue performance quantities are smooth. Thus there is no evident structural obstacle in the equations to applying a local smooth-map / Lyapunov–Schmidt fold analysis.</p>
+
+  <h3>What remains to check at the computed critical design</h3>
+  <p>The remaining model-specific check is narrow: record several flexible generalized eigenvalues around the critical design and verify that the modes used as <span class="math">f1</span> and <span class="math">f2</span> are simple, remain ordered, and remain comfortably separated from the implementation's mode-selection threshold. It is also useful to record the two inertia eigenvalues and their gap explicitly. These are diagnostics of the smoothness assumptions, not additional searches for a fold.</p>
+
+  <div class="ok" style="padding:8px;border-radius:6px;margin-top:10px">
+    <strong>Current assessment:</strong> the implemented equations do not appear to obstruct a smooth local fold formulation. The main unresolved smoothness issue is modal simplicity/selection for the two flexible frequencies at and near the critical design.
+  </div>
+</section>
 </body></html>
