@@ -710,10 +710,73 @@ def continue_fold_candidate(
     except Exception as e:
         normal_form={'status':'unavailable','error':str(e),'interpretation':'Normal-form diagnostic could not be evaluated.'}
 
+
+    # Active-subspace invariance diagnostic.  Rebuild the critical SVD direction
+    # at several nearby, well-corrected continuation designs and repeat the same
+    # local quadratic projection.  Sign is aligned with v_c.  Persistence of the
+    # fold coefficient/sign and high quadratic fit quality under these legitimate
+    # nearby active bases argues that the observed fold is not a single-basis artifact.
+    active_invariance=None
+    try:
+        if normal_form and normal_form.get('status') in {'supported','diagnostic'}:
+            good=[(i,q) for i,q in enumerate(trace)
+                  if q.get('converged',False) and float(q.get('residual_inf',1.0))<=1e-4]
+            # Use center plus up to two nearest valid designs on each side.
+            ranked=sorted(good,key=lambda iq:abs(float(iq[1]['control_value'])-control_c))
+            anchors=ranked[:min(5,len(ranked))]
+            tests=[]
+            base_sign=None
+            for ai,aq in anchors:
+                ar=robot.with_design_vector(np.log(np.maximum(
+                    np.r_[np.asarray(aq['t1'],float),np.asarray(aq['t2'],float)],1e-15)))
+                Ja=target_jacobian(ar,specs_for_eta(float(aq['eta'])),context)
+                _,sa,Vta=np.linalg.svd(Ja,full_matrices=False)
+                va=np.asarray(Vta[-1],float)
+                if float(np.dot(va,vc))<0: va=-va
+                alignment=abs(float(np.dot(va,vc)))/(max(np.linalg.norm(va)*np.linalg.norm(vc),1e-30))
+                xa=ar.design_vector()
+                # Use the same closest half-neighborhood in physical continuation trace.
+                candidates=[]
+                for i,q in good:
+                    xq=np.log(np.maximum(np.r_[np.asarray(q['t1'],float),np.asarray(q['t2'],float)],1e-15))
+                    z=float(np.dot(va,xq-xa))
+                    mu=float(q['control_value'])-float(aq['control_value'])
+                    candidates.append((abs(z),z,mu))
+                use=sorted(candidates,key=lambda r:r[0])[:max(5,int(np.ceil(.5*len(candidates))))]
+                z=np.asarray([r[1] for r in use],float); mu=np.asarray([r[2] for r in use],float)
+                z2=z*z
+                C=float(np.dot(z2,mu)/max(np.dot(z2,z2),1e-30))
+                pred=C*z2
+                r2q=1.0-float(np.sum((mu-pred)**2))/max(float(np.sum(mu*mu)),1e-30)
+                tests.append({'trace_index':int(ai),'control_value':float(aq['control_value']),
+                              'sigma_ratio':float(sa[-1]/max(sa[0],1e-30)),
+                              'direction_alignment':float(alignment),
+                              'quadratic_C':C,'r2_mu_equals_Cz2':r2q,'points':len(use)})
+            reliable=[t for t in tests if np.isfinite(t['quadratic_C']) and np.isfinite(t['r2_mu_equals_Cz2'])]
+            if reliable:
+                signs=[np.sign(t['quadratic_C']) for t in reliable if abs(t['quadratic_C'])>1e-12]
+                same_sign=bool(signs and all(s==signs[0] for s in signs))
+                min_align=min(t['direction_alignment'] for t in reliable)
+                min_r2=min(t['r2_mu_equals_Cz2'] for t in reliable)
+                cs=np.asarray([t['quadratic_C'] for t in reliable],float)
+                cv=float(np.std(cs)/max(abs(np.mean(cs)),1e-30))
+                supported=bool(same_sign and min_align>=.90 and min_r2>=.90)
+                active_invariance={'status':'supported' if supported else 'diagnostic',
+                    'tests':tests,'same_quadratic_sign':same_sign,'min_direction_alignment':float(min_align),
+                    'min_quadratic_r2':float(min_r2),'quadratic_C_coefficient_of_variation':cv,
+                    'interpretation':('The local fold signature persists under nearby recomputed active SVD bases.'
+                                      if supported else
+                                      'The fold signature is sensitive to at least one nearby active-basis reconstruction; inspect the table before making an invariance claim.'),
+                    'caution':'This is a numerical local-basis invariance test, not a proof of coordinate-free equivalence. A formal theorem still requires the smoothness/rank hypotheses of the Lyapunov-Schmidt reduction.'}
+            else:
+                active_invariance={'status':'unavailable','tests':tests,'interpretation':'No reliable nearby-basis fits were available.'}
+    except Exception as e:
+        active_invariance={'status':'unavailable','error':str(e),'interpretation':'Active-subspace invariance diagnostic could not be evaluated.'}
+
     bounds_configured=section_min is not None or section_max is not None
     any_active=any(q['active_bounds'] for q in trace)
     return {"status":"completed","controls":control_metrics,"trace":trace,"turning_indices":turns,
-        "turning_point_detected":bool(turns),"best":best,"paired_designs":paired_designs,"normal_form":normal_form,
+        "turning_point_detected":bool(turns),"best":best,"paired_designs":paired_designs,"normal_form":normal_form,"active_invariance":active_invariance,
         "bounds":{"configured":bounds_configured,"section_min":section_min,"section_max":section_max,
                   "active_anywhere":any_active,
                   "interpretation":("No configured finite section bound became active on the computed trace." if bounds_configured and not any_active else
