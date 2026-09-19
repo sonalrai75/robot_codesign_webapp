@@ -83,11 +83,11 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
 </div><div class="card"><h2>Fold normal-form verification</h2><p>The continuation workflow now performs an explicit local normal-form diagnostic at the best rank-loss point. It defines the critical coordinate <b>z = v<sub>c</sub><sup>T</sup>(x−x<sub>c</sub>)</b> from the weakest right-singular direction and the control displacement <b>μ = control−control<sub>c</sub></b>, then tests whether the shrinking-neighborhood data satisfy <b>μ ≈ C z²</b>.</p><p>It also fits μ=c₀+c₁z+c₂z²+c₃z³ over progressively smaller neighborhoods and reports quadratic fit quality plus linear/quadratic and cubic/quadratic contribution ratios. Increasing quadratic dominance is numerical evidence for local equivalence to the fold normal form.</p><p>A reduced mathematical potential can then be constructed by integrating the scalar reduced equation: if g(z,μ)=μ−Cz², then V(z,μ)=μz−(C/3)z³, up to smooth rescaling and higher-order terms. This is a local mathematical potential, not a claim that the robot's mechanical potential energy causes the fold.</p><p><b>Interpretation:</b> passing this diagnostic strengthens the connection between the engineering design-map singularity and the canonical fold normal form. It does not by itself establish every hypothesis of a classical Thom catastrophe classification.</p></div>
 
 <section class="card">
-  <h2>Critical-point complement-invariance test</h2>
-  <p>The invariance test keeps the same physical critical design and critical direction. It then applies several smooth, invertible local changes of design coordinates. Each coordinate system induces a different legitimate complementary subspace for the Lyapunov–Schmidt decomposition.</p>
+  <h2>Critical-point coordinate-invariance test</h2>
+  <p>The coordinate-invariance test keeps the same physical critical design and the same scalar critical projection z = v_c^T(x-x_c). It then applies several smooth, invertible local changes of design coordinates x-x_c = Ay. The scalar projection is represented covariantly as ell_y = A^T v_c, so z = ell_y^T y exactly.</p>
   <p>For every representation the app refits the local relation <span class="math">μ ≈ C z²</span>. The numerical value of <span class="math">C</span> is allowed to change under coordinate rescaling. What should persist for a generic fold is a nonzero quadratic term, strong local quadratic fit, suppression of lower/higher-order contamination, and the same physical critical direction.</p>
   <p>This replaces the earlier nearby-anchor SVD test. Re-centering a quadratic fold model at regular continuation points was unnecessarily strong: regular points are not themselves folds, so they need not satisfy a fold equation centered at those points.</p>
-  <p><strong>Scope:</strong> persistence across these coordinate/complement choices is numerical evidence that the local fold germ is not an artifact of one chosen representation. A formal Thom classification still requires the smoothness, corank-one, nondegeneracy, and unfolding hypotheses to be stated and justified.</p>
+  <p><strong>Scope:</strong> persistence under these coordinate changes checks that the projected fold germ is not an artifact of the chosen design units or linear coordinate representation. This is not a Lyapunov-Schmidt complement-invariance proof; a genuine complement test would explicitly construct each regular complement and re-solve the regular equations. A formal Thom classification still requires the smoothness, corank-one, nondegeneracy, and unfolding hypotheses to be stated and justified.</p>
 </section>
 
 <section class="card">
@@ -112,7 +112,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
   <p class="math">x = x_c + z v_c + W w.</p>
   <p>Because the derivative restricted to the regular complement is nonsingular, the implicit-function theorem gives a smooth local solution <span class="math">w = w(z, μ)</span>. Projection onto the left critical direction then produces one scalar reduced equation</p>
   <p class="math">g(z, μ) = u_cᵀ R(x_c + z v_c + W w(z, μ), μ) = 0.</p>
-  <p>The complement-invariance experiment supports the numerical persistence of the resulting fold germ under several legitimate local coordinate/complement choices.</p>
+  <p>The coordinate-invariance experiment supports persistence of the same projected fold germ under several smooth invertible coordinate representations.</p>
 
   <h3>5. Fold nondegeneracy</h3>
   <p>At the critical point the reduced equation must satisfy</p>
@@ -134,7 +134,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
   <p>This potential is a local mathematical potential for the reduced scalar equation; it is not asserted to be the robot's mechanical potential energy.</p>
 
   <h3>8. Current evidentiary status</h3>
-  <p><strong>Numerically supported:</strong> isolated active rank loss; nonzero quadratic curvature; control transversality; derivative robustness; two local branches; pseudo-arclength turning point; shrinking-neighborhood convergence to a quadratic normal form; and persistence of that fold germ under legitimate critical-point coordinate/complement changes.</p>
+  <p><strong>Numerically supported:</strong> isolated active rank loss; nonzero quadratic curvature; control transversality; derivative robustness; two local branches; pseudo-arclength turning point; shrinking-neighborhood convergence to a quadratic normal form; and coordinate invariance of the projected fold germ under smooth invertible changes of design coordinates.</p>
   <p><strong>To justify analytically/document explicitly:</strong> smoothness of the selected performance map in the critical neighborhood; absence of a modal/eigenvalue nonsmoothness or active hard-bound mechanism at the critical design; the regular-complement hypothesis for the chosen active/redundant decomposition; and the precise identification of the selected control as a smooth unfolding parameter.</p>
 
   <div class="warn" style="padding:8px;border-radius:6px;margin-top:10px">
@@ -212,7 +212,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px
   </div>
 
   <h3>6. Evidence supporting the proposition's hypotheses</h3>
-  <p>The numerical computation supplies mutually consistent evidence for: isolated active near-rank loss; a single critical direction relative to the regular active spectrum; nonzero projected quadratic curvature; nonzero control transversality; derivative robustness; two distinct local solution branches; a pseudo-arclength turning point; convergence toward <span class="math">μ=Cz²</span> as the fitting neighborhood shrinks; persistence of the quadratic fold germ under multiple legitimate critical-point coordinate/complement constructions; and strong separation of the selected flexible and inertia eigenvalues in the critical neighborhood.</p>
+  <p>The numerical computation supplies mutually consistent evidence for: isolated active near-rank loss; a single critical direction relative to the regular active spectrum; nonzero projected quadratic curvature; nonzero control transversality; derivative robustness; two distinct local solution branches; a pseudo-arclength turning point; convergence toward <span class="math">μ=Cz²</span> as the fitting neighborhood shrinks; coordinate invariance of the projected quadratic fold germ under multiple smooth invertible design-coordinate transformations; and strong separation of the selected flexible and inertia eigenvalues in the critical neighborhood.</p>
   <p>The spectral audit specifically removes a plausible source of nonsmoothness: the selected flexible modes remain far from one another and far from the implementation's mode-selection threshold, while the two inertia eigenvalues remain distinct.</p>
 
   <h3>7. Scope of the claim</h3>

@@ -713,18 +713,17 @@ def continue_fold_candidate(
         normal_form={'status':'unavailable','error':str(e),'interpretation':'Normal-form diagnostic could not be evaluated.'}
 
 
-    # Critical-point coordinate/complement invariance diagnostic.
+    # Critical-point coordinate-invariance diagnostic.
     #
-    # Keep the SAME physical critical design x_c and physical critical direction
-    # v_c.  Apply several deterministic, smooth, invertible local coordinate
-    # changes x-x_c = A y.  In each coordinate system the critical direction is
-    # represented by A^{-1}v_c; an orthogonal complement in y therefore induces
-    # a different legitimate complement in physical design space.  Refit the
-    # local fold relation using only the closest, well-corrected continuation
-    # points.  A generic fold should retain a nonzero quadratic term and strong
-    # local quadratic fit under these coordinate/complement choices; the value
-    # of C itself is NOT invariant and is not required to agree.
-    complement_invariance=None
+    # Keep the SAME physical critical design x_c and physical scalar critical
+    # coordinate z = v_c^T (x-x_c). Under a smooth invertible linear change
+    # x-x_c = A y, the covector representing this scalar coordinate transforms
+    # as ell_y = A^T v_c, so z = ell_y^T y exactly.  This is a coordinate-
+    # invariance check of the projected fold germ; it is deliberately NOT
+    # described as a Lyapunov-Schmidt complement-invariance test, because a
+    # genuine complement test would have to construct the regular complement
+    # and re-solve the regular equations in each decomposition.
+    coordinate_invariance=None
     try:
         if normal_form and normal_form.get('status') in {'supported','diagnostic'}:
             good=[]
@@ -737,16 +736,11 @@ def continue_fold_candidate(
             transforms=[]
             I=np.eye(nvar)
             transforms.append(("identity",I))
-
-            # Moderate diagonal rescalings: smooth changes of local design units.
             if nvar:
                 d1=np.linspace(0.85,1.15,nvar)
                 d2=np.linspace(1.15,0.85,nvar)
                 transforms.append(("scaled-A",np.diag(d1)))
                 transforms.append(("scaled-B",np.diag(d2)))
-
-            # Two mild shears induce different complements while remaining
-            # comfortably nonsingular.  Deterministic indices make runs repeatable.
             if nvar>=2:
                 A=I.copy(); A[0,-1]=0.18
                 transforms.append(("shear-1",A))
@@ -756,17 +750,17 @@ def continue_fold_candidate(
             tests=[]
             for label,A in transforms:
                 Ainv=np.linalg.inv(A)
-                vy=Ainv@vc
-                vy=vy/max(float(np.linalg.norm(vy)),1e-30)
-                # Physical direction represented by this coordinate kernel vector.
-                vphys=A@vy
-                vphys=vphys/max(float(np.linalg.norm(vphys)),1e-30)
-                alignment=abs(float(np.dot(vphys,vc)))
-
+                # z is a scalar physical projection.  v_c acts here as a
+                # covector; therefore its coordinate representation is A^T v_c.
+                ell_y=A.T@vc
                 pts=[]
+                max_z_error=0.0
                 for i,q,xq in good:
-                    dy=Ainv@(xq-xc)
-                    z=float(np.dot(vy,dy))
+                    dx=xq-xc
+                    dy=Ainv@dx
+                    z=float(np.dot(ell_y,dy))
+                    z_phys=float(np.dot(vc,dx))
+                    max_z_error=max(max_z_error,abs(z-z_phys))
                     mu=float(q['control_value'])-control_c
                     pts.append((abs(z),z,mu,i))
                 use=sorted(pts,key=lambda r:r[0])[:max(5,int(np.ceil(.5*len(pts))))]
@@ -776,9 +770,6 @@ def continue_fold_candidate(
                 C=float(np.dot(z2,mu)/max(np.dot(z2,z2),1e-30))
                 pred=C*z2
                 r2q=1.0-float(np.sum((mu-pred)**2))/max(float(np.sum(mu*mu)),1e-30)
-
-                # General cubic fit checks that the quadratic term dominates
-                # locally in this representation.
                 X=np.column_stack([np.ones_like(z),z,z*z,z*z*z])
                 coef=np.linalg.lstsq(X,mu,rcond=None)[0]
                 zscale=float(np.max(np.abs(z)))
@@ -787,7 +778,7 @@ def continue_fold_candidate(
                 cubic=abs(float(coef[3]))*zscale**3
                 tests.append({
                     'coordinate_system':label,
-                    'critical_direction_alignment':alignment,
+                    'max_physical_z_error':float(max_z_error),
                     'quadratic_C':C,
                     'r2_mu_equals_Cz2':r2q,
                     'linear_to_quadratic':float(linear/max(quad,1e-30)),
@@ -799,37 +790,39 @@ def continue_fold_candidate(
             if reliable:
                 signs=[np.sign(t['quadratic_C']) for t in reliable if abs(t['quadratic_C'])>1e-12]
                 same_sign=bool(signs and all(s==signs[0] for s in signs))
-                min_align=min(t['critical_direction_alignment'] for t in reliable)
+                max_zerr=max(t['max_physical_z_error'] for t in reliable)
                 min_r2=min(t['r2_mu_equals_Cz2'] for t in reliable)
                 max_lq=max(t['linear_to_quadratic'] for t in reliable)
                 max_cq=max(t['cubic_to_quadratic'] for t in reliable)
                 supported=bool(
-                    same_sign and min_align>=.999 and min_r2>=.90
+                    same_sign and max_zerr<=1e-10 and min_r2>=.90
                     and max_lq<=.35 and max_cq<=.35
                 )
-                complement_invariance={
+                coordinate_invariance={
                     'status':'supported' if supported else 'diagnostic',
                     'tests':tests,
                     'same_quadratic_sign':same_sign,
-                    'min_critical_direction_alignment':float(min_align),
+                    'max_physical_z_error':float(max_zerr),
                     'min_quadratic_r2':float(min_r2),
                     'max_linear_to_quadratic':float(max_lq),
                     'max_cubic_to_quadratic':float(max_cq),
                     'interpretation':(
-                        'The local fold normal form persists at the same physical critical point under several smooth coordinate changes that induce different complementary subspaces.'
+                        'The same physical projected fold germ is invariant under the tested smooth invertible coordinate changes.'
                         if supported else
-                        'At least one legitimate critical-point coordinate/complement choice does not yet preserve the configured local fold diagnostics.'
+                        'At least one tested coordinate representation does not preserve the configured projected fold diagnostics.'
                     ),
                     'caution':(
-                        'The numerical value of C is coordinate-dependent and is intentionally not required to match across tests. '
-                        'This diagnostic tests persistence of the nondegenerate quadratic fold germ at one physical critical point; '
-                        'a rigorous Thom classification still requires the smoothness, rank and unfolding hypotheses to be stated and justified.'
+                        'This is a coordinate-invariance check of the scalar physical projection z=v_c^T(x-x_c), not a Lyapunov-Schmidt complement-invariance proof. '
+                        'A genuine complement test requires explicitly constructing each regular complement and re-solving the regular equations.'
                     ),
                 }
             else:
-                complement_invariance={'status':'unavailable','tests':tests,'interpretation':'No reliable critical-point coordinate/complement fits were available.'}
+                coordinate_invariance={'status':'unavailable','tests':tests,'interpretation':'No reliable critical-point coordinate-invariance fits were available.'}
     except Exception as e:
-        complement_invariance={'status':'unavailable','error':str(e),'interpretation':'Critical-point complement-invariance diagnostic could not be evaluated.'}
+        coordinate_invariance={'status':'unavailable','error':str(e),'interpretation':'Critical-point coordinate-invariance diagnostic could not be evaluated.'}
+
+    # Backward-compatible response key for the current front end/API clients.
+    complement_invariance=coordinate_invariance
 
     # Local spectral-smoothness audit at the critical point and its nearest
     # well-corrected continuation neighbors.  This is not another fold search:

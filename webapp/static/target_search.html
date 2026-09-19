@@ -217,14 +217,14 @@ function renderNormalForm(nf){
 
 function renderComplementInvariance(iv){
  if(!iv)return '';
- if(iv.status==='unavailable')return `<div class="warn" style="margin-top:10px"><b>Critical-point complement-invariance diagnostic unavailable:</b> ${iv.error||iv.interpretation||''}</div>`;
- let rows=(iv.tests||[]).map(t=>`<tr><td>${t.coordinate_system}</td><td>${Number(t.critical_direction_alignment).toFixed(6)}</td><td>${Number(t.quadratic_C).toExponential(5)}</td><td>${Number(t.r2_mu_equals_Cz2).toFixed(5)}</td><td>${Number(t.linear_to_quadratic).toExponential(2)}</td><td>${Number(t.cubic_to_quadratic).toExponential(2)}</td><td>${t.points}</td></tr>`).join('');
+ if(iv.status==='unavailable')return `<div class="warn" style="margin-top:10px"><b>Critical-point coordinate-invariance diagnostic unavailable:</b> ${iv.error||iv.interpretation||''}</div>`;
+ let rows=(iv.tests||[]).map(t=>`<tr><td>${t.coordinate_system}</td><td>${Number(t.max_physical_z_error).toExponential(2)}</td><td>${Number(t.quadratic_C).toExponential(5)}</td><td>${Number(t.r2_mu_equals_Cz2).toFixed(5)}</td><td>${Number(t.linear_to_quadratic).toExponential(2)}</td><td>${Number(t.cubic_to_quadratic).toExponential(2)}</td><td>${t.points}</td></tr>`).join('');
  let cls=iv.status==='supported'?'ok':'warn';
- return `<div class="card" style="margin-top:12px"><h4>Critical-Point Complement-Invariance Test</h4>
- <div class="${cls}" style="padding:8px;border-radius:6px"><b>${iv.status==='supported'?'Fold normal form persists across legitimate complements':'Complement invariance not yet supported'}</b><br>${iv.interpretation||''}</div>
- <div style="margin-top:8px"><b>Same sign of nonzero quadratic term:</b> ${iv.same_quadratic_sign?'YES':'NO'} &nbsp; <b>Minimum physical critical-direction alignment:</b> ${Number(iv.min_critical_direction_alignment).toFixed(6)} &nbsp; <b>Minimum quadratic R²:</b> ${Number(iv.min_quadratic_r2).toFixed(5)}<br><b>Maximum linear/quadratic:</b> ${Number(iv.max_linear_to_quadratic).toExponential(2)} &nbsp; <b>Maximum cubic/quadratic:</b> ${Number(iv.max_cubic_to_quadratic).toExponential(2)}</div>
- <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Coordinate / complement</th><th>critical-dir. alignment</th><th>C</th><th>R²: μ=Cz²</th><th>linear/quadratic</th><th>cubic/quadratic</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table></div>
- <div class="muted" style="margin-top:6px">All tests use the same physical critical design x<sub>c</sub>. Smooth invertible local coordinate changes induce different complementary subspaces while preserving the physical critical direction. The coefficient C may rescale; persistence of a nonzero quadratic fold germ is the invariant being tested.</div>
+ return `<div class="card" style="margin-top:12px"><h4>Critical-Point Coordinate-Invariance Test</h4>
+ <div class="${cls}" style="padding:8px;border-radius:6px"><b>${iv.status==='supported'?'Projected fold germ is coordinate invariant':'Coordinate invariance not yet supported'}</b><br>${iv.interpretation||''}</div>
+ <div style="margin-top:8px"><b>Same sign of nonzero quadratic term:</b> ${iv.same_quadratic_sign?'YES':'NO'} &nbsp; <b>Maximum physical z error:</b> ${Number(iv.max_physical_z_error).toExponential(2)} &nbsp; <b>Minimum quadratic R²:</b> ${Number(iv.min_quadratic_r2).toFixed(5)}<br><b>Maximum linear/quadratic:</b> ${Number(iv.max_linear_to_quadratic).toExponential(2)} &nbsp; <b>Maximum cubic/quadratic:</b> ${Number(iv.max_cubic_to_quadratic).toExponential(2)}</div>
+ <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Coordinate system</th><th>max |Δz|</th><th>C</th><th>R²: μ=Cz²</th><th>linear/quadratic</th><th>cubic/quadratic</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table></div>
+ <div class="muted" style="margin-top:6px">All tests use the same physical critical design and the same scalar physical projection z=v<sub>c</sub><sup>T</sup>(x−x<sub>c</sub>). Under x−x<sub>c</sub>=Ay, its covector transforms as ℓ<sub>y</sub>=A<sup>T</sup>v<sub>c</sub>, so z=ℓ<sub>y</sub><sup>T</sup>y.</div>
  <div class="warn" style="padding:8px;margin-top:8px;border-radius:6px"><b>Caution:</b> ${iv.caution||''}</div></div>`;
 }
 
